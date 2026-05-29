@@ -1,0 +1,7 @@
+name = "rald-auth-ui"
+pages_build_output_dir = "dist"
+compatibility_date = "2025-01-01"
+
+[vars]
+VITE_AUTH_API_URL = "https://auth.rald.cloud"
+VITE_APP_NAME = "RALD"
