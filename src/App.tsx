@@ -46,9 +46,9 @@ function AuthShell({ children, tab }: { children: React.ReactNode; tab: TabId })
           <div className="card-header">
             <div className="brand-row">
               <img src="/rald-logo.png" className="brand-logo" alt="RALD" />
-              <span className="brand-name">RALD Auth</span>
+              <span className="brand-name">RALD</span>
             </div>
-            <span className="rald-auth-badge">RALD AUTH</span>
+            <span className="rald-auth-badge">RALD</span>
           </div>
 
           {/* ── Tab nav ─────────────────────────────────────────── */}
@@ -73,8 +73,7 @@ function AuthShell({ children, tab }: { children: React.ReactNode; tab: TabId })
 
           {/* ── Footer ──────────────────────────────────────────── */}
           <div className="card-footer">
-            Secured by <span style={{ color: "#004d85", fontWeight: 700 }}>RALD</span>
-            {" · "}Powered by <span style={{ color: "#2EB67D" }}>Termii</span>
+            © <span style={{ color: "var(--green)", fontWeight: 700 }}>RALD</span>
             {" · "}
             <a href="https://rald.cloud/privacy">Privacy</a>
             {" · "}
