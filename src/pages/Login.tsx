@@ -75,7 +75,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const res = await api.sendOtp(phone);
-      setPinId(res.pinId);
+      setPinId(res.pinId ?? "");
       setStep("otp");
     } catch (ex: unknown) {
       setErr(ex instanceof Error ? ex.message : "Failed to send code");
@@ -88,8 +88,8 @@ export default function LoginPage() {
     e.preventDefault(); clear();
     setLoading(true);
     try {
-      const res = await api.sendLoginEmailOtp(emailOtp);
-      setSessionToken(res.sessionToken);
+      const res = await api.sendOtp(emailOtp);
+      setSessionToken(res.sessionToken ?? "");
       setStep("otp");
     } catch (ex: unknown) {
       setErr(ex instanceof Error ? ex.message : "Failed to send code");
@@ -104,12 +104,14 @@ export default function LoginPage() {
     if (code.length < 6) return setErr("Enter all 6 digits.");
     setLoading(true);
     try {
-      const res = await api.verifyOtp(pinId, code, phone);
+      const res = await api.verifyOtp(phone, code, { pinId });
       if ("token" in res) {
         login(res.token, res.user);
         navigate("/");
       } else {
-        navigate("/register?mode=otp&phone=" + encodeURIComponent(res.phone) + "&token=" + encodeURIComponent(res.otpToken));
+        const ph = ("phone" in res ? res.phone : undefined) ?? "";
+        const tk = ("otpToken" in res ? res.otpToken : undefined) ?? "";
+        navigate("/register?mode=otp&phone=" + encodeURIComponent(ph) + "&token=" + encodeURIComponent(tk));
       }
     } catch (ex: unknown) {
       setErr(ex instanceof Error ? ex.message : "Verification failed");
@@ -124,12 +126,14 @@ export default function LoginPage() {
     if (code.length < 6) return setErr("Enter all 6 digits.");
     setLoading(true);
     try {
-      const res = await api.verifyLoginEmailOtp(sessionToken, code);
+      const res = await api.verifyOtp(emailOtp, code, { sessionToken });
       if ("token" in res) {
         login(res.token, res.user);
         navigate("/");
       } else {
-        navigate("/register?mode=email&email=" + encodeURIComponent(res.email) + "&token=" + encodeURIComponent(res.emailToken));
+        const em = ("email" in res ? res.email : undefined) ?? "";
+        const tk = ("emailToken" in res ? res.emailToken : undefined) ?? "";
+        navigate("/register?mode=email&email=" + encodeURIComponent(em) + "&token=" + encodeURIComponent(tk));
       }
     } catch (ex: unknown) {
       setErr(ex instanceof Error ? ex.message : "Verification failed");
@@ -138,7 +142,6 @@ export default function LoginPage() {
     }
   }
 
-  // OTP entry UI (shared for phone + email OTP)
   const otpStep = (
     <form onSubmit={tab === "phone" ? verifyPhoneOtp : verifyEmailOtp} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div>
