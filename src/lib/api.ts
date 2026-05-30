@@ -1,4 +1,4 @@
-// RALD Auth UI — API Client
+// RALD Identity — API Client
 // All calls go to rald-auth-core at auth.rald.cloud
 
 const BASE = import.meta.env.VITE_AUTH_API_URL ?? "https://auth.rald.cloud";
@@ -26,9 +26,9 @@ export type AuthUser = {
   createdAt: string;
 };
 
-export type AuthResponse = { token: string; user: AuthUser };
-export type OtpSentResponse = { sessionToken?: string; pinId?: string; message: string };
-export type OtpVerifyResponse =
+export type AuthResponse        = { token: string; user: AuthUser };
+export type OtpSentResponse     = { sessionToken?: string; pinId?: string; message: string };
+export type OtpVerifyResponse   =
   | AuthResponse
   | { newUser: true; phone?: string; email?: string; otpToken?: string; emailToken?: string };
 
@@ -148,7 +148,11 @@ export const api = {
       body: JSON.stringify({ appId }),
     }),
 
-  sessions: () => req<unknown[]>("/auth/sessions"),
-  revokeSession: (id: string) => req(`/auth/sessions/${id}`, { method: "DELETE" }),
-  revokeAllSessions: () => req("/auth/sessions", { method: "DELETE" }),
+  sessions:          ()          => req<unknown[]>("/auth/sessions"),
+  revokeSession:     (id: string) => req<{ message: string }>(`/auth/sessions/${id}`,    { method: "DELETE" }),
+  revokeAllSessions: ()          => req<{ message: string }>("/auth/sessions",           { method: "DELETE" }),
+
+  devices:      ()          => req<unknown[]>("/devices"),
+  removeDevice: (id: string) => req<{ message: string }>(`/devices/${id}`,              { method: "DELETE" }),
+  trustDevice:  (id: string) => req<{ message: string }>(`/devices/${id}/trust`,        { method: "POST" }),
 };
