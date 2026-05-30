@@ -18,7 +18,7 @@ export default function ForgotPage() {
     if (!email.trim()) return setErr("Email is required.");
     setLoading(true);
     try {
-      await api.requestPasswordReset(email.trim());
+      await api.requestReset(email.trim());
       setStep("reset");
     } catch (ex: unknown) {
       setErr(ex instanceof Error ? ex.message : "Failed to send reset email");
