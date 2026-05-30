@@ -54,7 +54,7 @@ export default function VerifyPage() {
 
   const submit = async (code: string) => {
     if (loading) return;
-    setLoading(true); setBoxState("processing" as OtpBoxState); setError("");
+    setLoading(true); setBoxState("filled"); setError("");
     try {
       const res = await api.verifyOtp(identity, code, sessionData);
       if (isAuthResponse(res)) {
@@ -66,10 +66,10 @@ export default function VerifyPage() {
       }
       if (res.newUser) {
         setBoxState("verified");
-        sessionStorage.setItem("rald_otp_token",   res.otpToken   ?? "");
-        sessionStorage.setItem("rald_email_token", res.emailToken ?? "");
-        sessionStorage.setItem("rald_new_phone",   res.phone      ?? "");
-        sessionStorage.setItem("rald_new_email",   res.email      ?? "");
+        sessionStorage.setItem("rald_otp_token",   ("otpToken"   in res ? res.otpToken   : undefined) ?? "");
+        sessionStorage.setItem("rald_email_token", ("emailToken" in res ? res.emailToken : undefined) ?? "");
+        sessionStorage.setItem("rald_new_phone",   ("phone"      in res ? res.phone      : undefined) ?? "");
+        sessionStorage.setItem("rald_new_email",   ("email"      in res ? res.email      : undefined) ?? "");
         setTimeout(() => navigate("/signup"), 400);
       }
     } catch (e: unknown) {
@@ -124,7 +124,7 @@ export default function VerifyPage() {
         <div className="error-bar" style={{ marginBottom: 14 }}>{error}</div>
       )}
 
-      {loading && boxState === "processing" && !error && (
+      {loading && !error && (
         <div style={{ textAlign: "center", color: "var(--amber)", fontSize: 13, marginBottom: 14 }}>
           <span className="spinner" style={{ marginRight: 6 }} />Verifying…
         </div>
