@@ -1,7 +1,6 @@
 import { useState, useEffect, createContext, useContext } from "react";
 import { Router, Route, Switch, useLocation } from "wouter";
 import { api, saveToken, clearToken, getToken, type AuthUser } from "./lib/api";
-import Logo from "./components/Logo";
 import IdentityPage  from "./pages/Identity";
 import VerifyPage    from "./pages/Verify";
 import PasswordPage  from "./pages/Password";
@@ -27,38 +26,62 @@ export function useAuth() {
   return useContext(AuthContext);
 }
 
-function AuthShell({ children }: { children: React.ReactNode }) {
+type TabId = "signin" | "signup" | "recover";
+
+function AuthShell({ children, tab }: { children: React.ReactNode; tab: TabId }) {
+  const [, navigate] = useLocation();
+
+  const tabs: { id: TabId; label: string; icon: string; path: string }[] = [
+    { id: "signin",  label: "Sign In",  icon: "→", path: "/" },
+    { id: "signup",  label: "Sign Up",  icon: "✦", path: "/signup" },
+    { id: "recover", label: "Recover",  icon: "⚿", path: "/reset" },
+  ];
+
   return (
     <div className="auth-shell">
       <div className="auth-shell-inner">
-        {/* Logo + title */}
-        <div style={{ textAlign: "center", marginBottom: 28 }}>
-          <Logo size={52} />
-          <h2 style={{
-            marginTop: 14,
-            fontSize: 20,
-            fontWeight: 800,
-            letterSpacing: ".12em",
-            color: "#F5F7FA",
-          }}>
-            RALD AUTH
-          </h2>
+        <div className="rald-card">
+
+          {/* ── Header ──────────────────────────────────────────── */}
+          <div className="card-header">
+            <div className="brand-row">
+              <img src="/rald-logo.png" className="brand-logo" alt="RALD" />
+              <span className="brand-name">RALD Auth</span>
+            </div>
+            <span className="rald-auth-badge">RALD AUTH</span>
+          </div>
+
+          {/* ── Tab nav ─────────────────────────────────────────── */}
+          <div className="card-tabs">
+            {tabs.map((t) => (
+              <button
+                key={t.id}
+                className={`tab-btn ${tab === t.id ? "tab-active" : "tab-inactive"}`}
+                onClick={() => navigate(t.path)}
+                type="button"
+              >
+                <span>{t.icon}</span>
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {/* ── Content ─────────────────────────────────────────── */}
+          <div className="card-body">
+            {children}
+          </div>
+
+          {/* ── Footer ──────────────────────────────────────────── */}
+          <div className="card-footer">
+            Secured by <span style={{ color: "#004d85", fontWeight: 700 }}>RALD</span>
+            {" · "}Powered by <span style={{ color: "#2EB67D" }}>Termii</span>
+            {" · "}
+            <a href="https://rald.cloud/privacy">Privacy</a>
+            {" · "}
+            <a href="https://rald.cloud/terms">Terms</a>
+          </div>
+
         </div>
-
-        {children}
-
-        <p style={{
-          textAlign: "center",
-          fontSize: 11,
-          color: "#606870",
-          marginTop: 28,
-          lineHeight: 1.7,
-        }}>
-          Secured by RALD ·{" "}
-          <a href="https://rald.cloud/privacy" style={{ color: "#606870" }}>Privacy</a>
-          {" · "}
-          <a href="https://rald.cloud/terms" style={{ color: "#606870" }}>Terms</a>
-        </p>
       </div>
     </div>
   );
@@ -74,14 +97,8 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <div style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        height: "100vh",
-        background: "var(--bg)",
-      }}>
-        <span className="spinner" style={{ color: "var(--green)", width: 32, height: 32, borderWidth: 3 }} />
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", background: "var(--bg)" }}>
+        <span className="spinner" style={{ color: "var(--green)", width: 28, height: 28, borderWidth: 3 }} />
       </div>
     );
   }
@@ -90,7 +107,7 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  const [user, setUser]     = useState<AuthUser | null>(null);
+  const [user, setUser]       = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -102,65 +119,45 @@ export default function App() {
       .finally(() => setLoading(false));
   }, []);
 
-  const login = (token: string, u: AuthUser) => {
-    saveToken(token);
-    setUser(u);
-  };
-
-  const logout = () => {
-    clearToken();
-    setUser(null);
-  };
+  const login  = (token: string, u: AuthUser) => { saveToken(token); setUser(u); };
+  const logout = () => { clearToken(); setUser(null); };
 
   return (
     <AuthContext.Provider value={{ user, loading, login, logout }}>
       <Router>
         <Switch>
-          {/* Auth entry — identity field */}
           <Route path="/">
-            <AuthShell><IdentityPage /></AuthShell>
+            <AuthShell tab="signin"><IdentityPage /></AuthShell>
           </Route>
           <Route path="/login">
-            <AuthShell><IdentityPage /></AuthShell>
+            <AuthShell tab="signin"><IdentityPage /></AuthShell>
           </Route>
-
-          {/* OTP verify */}
           <Route path="/verify">
-            <AuthShell><VerifyPage /></AuthShell>
+            <AuthShell tab="signin"><VerifyPage /></AuthShell>
           </Route>
-
-          {/* Password sign-in */}
           <Route path="/password">
-            <AuthShell><PasswordPage /></AuthShell>
+            <AuthShell tab="signin"><PasswordPage /></AuthShell>
           </Route>
-
-          {/* Create account */}
           <Route path="/signup">
-            <AuthShell><SignupPage /></AuthShell>
+            <AuthShell tab="signup"><SignupPage /></AuthShell>
           </Route>
           <Route path="/register">
-            <AuthShell><SignupPage /></AuthShell>
+            <AuthShell tab="signup"><SignupPage /></AuthShell>
           </Route>
-
-          {/* Password reset */}
           <Route path="/reset">
-            <AuthShell><ResetPage /></AuthShell>
+            <AuthShell tab="recover"><ResetPage /></AuthShell>
           </Route>
           <Route path="/forgot">
-            <AuthShell><ResetPage /></AuthShell>
+            <AuthShell tab="recover"><ResetPage /></AuthShell>
           </Route>
-
-          {/* Post-auth dashboard */}
           <Route path="/dashboard">
             <RequireAuth><DashboardPage /></RequireAuth>
           </Route>
-
-          {/* 404 */}
           <Route>
-            <AuthShell>
-              <div className="rald-card" style={{ textAlign: "center", padding: "48px 32px" }}>
-                <p style={{ color: "var(--muted)", marginBottom: 20, fontSize: 15 }}>Page not found.</p>
-                <a href="/" style={{ color: "var(--green)" }}>← Back to sign in</a>
+            <AuthShell tab="signin">
+              <div style={{ textAlign: "center", padding: "32px 0" }}>
+                <p className="hint" style={{ marginBottom: 16 }}>Page not found.</p>
+                <a href="/" style={{ color: "var(--green)", fontSize: 14 }}>← Back to sign in</a>
               </div>
             </AuthShell>
           </Route>
