@@ -4,81 +4,50 @@ import { api, saveToken, generateRaldId, getAppId, getRedirectTo, clearRedirect 
 import type { SdkState } from "../components/SdkInput";
 import { useAuth } from "../App";
 
+type FieldState = { val: string; s: SdkState };
+
 export default function SignupPage() {
   const [, navigate] = useLocation();
   const { login }    = useAuth();
+  const [raldId]     = useState(generateRaldId);
 
-  const [name,     setName]     = useState("");
-  const [email,    setEmail]    = useState("");
-  const [phone,    setPhone]    = useState("");
-  const [password, setPassword] = useState("");
-  const [raldId]                = useState(generateRaldId);
+  const [name,     setName]     = useState<FieldState>({ val: "", s: "idle" });
+  const [email,    setEmail]    = useState<FieldState>({ val: "", s: "idle" });
+  const [phone,    setPhone]    = useState<FieldState>({ val: "", s: "idle" });
+  const [password, setPassword] = useState<FieldState>({ val: "", s: "idle" });
   const [error,    setError]    = useState("");
   const [loading,  setLoading]  = useState(false);
 
-  const [nameState,  setNameState]  = useState<SdkState>("idle");
-  const [emailState, setEmailState] = useState<SdkState>("idle");
-  const [phoneState, setPhoneState] = useState<SdkState>("idle");
-  const [pwState,    setPwState]    = useState<SdkState>("idle");
-
-  // Pre-fill from OTP flow if coming from verify
   useEffect(() => {
     const preEmail = sessionStorage.getItem("rald_new_email");
     const prePhone = sessionStorage.getItem("rald_new_phone");
-    if (preEmail) setEmail(preEmail);
-    if (prePhone) setPhone(prePhone);
+    if (preEmail) setEmail({ val: preEmail, s: "verified" });
+    if (prePhone) setPhone({ val: prePhone, s: "verified" });
   }, []);
 
-  const validate = () => {
-    if (!name.trim())  { setNameState("error");  return "Full name is required."; }
-    if (!email.trim()) { setEmailState("error"); return "Email address is required."; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setEmailState("error"); return "Please enter a valid email."; }
-    if (!password)     { setPwState("error");    return "Password must be at least 8 characters."; }
-    if (password.length < 8) { setPwState("error"); return "Password must be at least 8 characters."; }
-    return null;
-  };
+  const f = (set: React.Dispatch<React.SetStateAction<FieldState>>) =>
+    (val: string) => set({ val, s: val ? "typing" : "idle" });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const err = validate();
-    if (err) { setError(err); return; }
+    if (!name.val.trim()) { setError("Full name is required."); return; }
+    if (!email.val.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.val)) { setError("Valid email is required."); return; }
+    if (!password.val || password.val.length < 8) { setError("Password must be at least 8 characters."); return; }
 
-    setLoading(true);
-    setError("");
-
-    // Check if we have OTP tokens from verify flow
-    const otpToken   = sessionStorage.getItem("rald_otp_token");
-    const emailToken = sessionStorage.getItem("rald_email_token");
-
+    setLoading(true); setError("");
     try {
-      let res;
-      if (otpToken || emailToken) {
-        res = await api.register({
-          name: name.trim(),
-          email: email.trim().toLowerCase(),
-          phone: phone.trim() || undefined,
-          password,
-          raldId,
-        });
-      } else {
-        res = await api.register({
-          name: name.trim(),
-          email: email.trim().toLowerCase(),
-          phone: phone.trim() || undefined,
-          password,
-          raldId,
-        });
-      }
+      const res = await api.register({
+        name:     name.val.trim(),
+        email:    email.val.trim().toLowerCase(),
+        phone:    phone.val.trim() || undefined,
+        password: password.val,
+        raldId,
+      });
 
-      // Clean up OTP state
       sessionStorage.removeItem("rald_otp_token");
       sessionStorage.removeItem("rald_email_token");
       sessionStorage.removeItem("rald_new_phone");
       sessionStorage.removeItem("rald_new_email");
-
-      setNameState("verified");
-      setEmailState("verified");
-      setPwState("verified");
 
       saveToken(res.token);
       login(res.token, res.user);
@@ -92,17 +61,14 @@ export default function SignupPage() {
           const sso = await api.ssoExchange(appId);
           const url = new URL(redirectTo);
           url.searchParams.set("rald_token", sso.token);
+          url.searchParams.set("app_id", appId);
           window.location.href = url.toString();
-        } catch {
-          window.location.href = redirectTo;
-        }
+        } catch { window.location.href = redirectTo; }
       } else {
         try {
           const clerk = await api.clerkExchange(appId);
           window.location.href = clerk.redirectUrl;
-        } catch {
-          navigate("/dashboard");
-        }
+        } catch { navigate("/dashboard"); }
       }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Could not create account. Try again.");
@@ -110,102 +76,60 @@ export default function SignupPage() {
     }
   };
 
-  return (
-    <div className="rald-card">
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>
-          Create Your RALD Account
-        </h1>
-        <p className="hint">One identity across the entire RALD ecosystem.</p>
-      </div>
+  const fields: { label: string; type: string; ph: string; ac: string; fs: FieldState; set: (v: string) => void; opt?: boolean }[] = [
+    { label: "Full Name",     type: "text",     ph: "Your full name",       ac: "name",        fs: name,     set: f(setName)     },
+    { label: "Email Address", type: "email",    ph: "you@example.com",      ac: "email",       fs: email,    set: f(setEmail)    },
+    { label: "Phone Number",  type: "tel",      ph: "08012345678",          ac: "tel",         fs: phone,    set: f(setPhone),   opt: true },
+    { label: "Password",      type: "password", ph: "Min. 8 characters",    ac: "new-password", fs: password, set: f(setPassword) },
+  ];
 
-      {/* RALD ID */}
-      <div style={{ marginBottom: 24, textAlign: "center" }}>
-        <span className="rald-id">{raldId}</span>
-        <p className="hint" style={{ marginTop: 6, fontSize: 11 }}>Your unique RALD identity</p>
+  return (
+    <>
+      <h1 className="page-heading">
+        Join <span className="accent">RALD.</span>
+      </h1>
+
+      <div style={{ textAlign: "center", marginBottom: 20 }}>
+        <span className="rald-id-pill">{raldId}</span>
+        <p className="hint" style={{ marginTop: 5, textAlign: "center" }}>Your unique RALD identity</p>
       </div>
 
       <form onSubmit={handleSubmit}>
-        {/* Full Name */}
-        <div style={{ marginBottom: 16 }}>
-          <label className="label">Full Name</label>
-          <div className="sdk-wrap" data-state={nameState}>
-            <input
-              className="rald-input"
-              type="text"
-              autoComplete="name"
-              placeholder="Your full name"
-              value={name}
-              onChange={(e) => { setName(e.target.value); setNameState(e.target.value ? "typing" : "idle"); setError(""); }}
-              disabled={loading}
-            />
+        {fields.map(({ label, type, ph, ac, fs, set, opt }) => (
+          <div key={label} className="field">
+            <label className="label">
+              {label}
+              {opt && <span style={{ opacity: .5, textTransform: "none", fontSize: 10 }}> (optional)</span>}
+            </label>
+            <div className="sdk-wrap" data-state={fs.s}>
+              <input
+                className="rald-input"
+                type={type}
+                autoComplete={ac}
+                placeholder={ph}
+                value={fs.val}
+                onChange={(e) => { set(e.target.value); setError(""); }}
+                disabled={loading}
+              />
+            </div>
           </div>
-        </div>
+        ))}
 
-        {/* Email */}
-        <div style={{ marginBottom: 16 }}>
-          <label className="label">Email Address</label>
-          <div className="sdk-wrap" data-state={emailState}>
-            <input
-              className="rald-input"
-              type="email"
-              inputMode="email"
-              autoComplete="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => { setEmail(e.target.value); setEmailState(e.target.value ? "typing" : "idle"); setError(""); }}
-              disabled={loading}
-            />
-          </div>
-        </div>
+        {error && <div className="error-bar" style={{ marginBottom: 12 }}>{error}</div>}
 
-        {/* Phone (optional) */}
-        <div style={{ marginBottom: 16 }}>
-          <label className="label">Phone Number <span style={{ opacity: .5, fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(optional)</span></label>
-          <div className="sdk-wrap" data-state={phoneState}>
-            <input
-              className="rald-input"
-              type="tel"
-              inputMode="tel"
-              autoComplete="tel"
-              placeholder="08012345678 or +2348012345678"
-              value={phone}
-              onChange={(e) => { setPhone(e.target.value); setPhoneState(e.target.value ? "typing" : "idle"); }}
-              disabled={loading}
-            />
-          </div>
-        </div>
-
-        {/* Password */}
-        <div style={{ marginBottom: 20 }}>
-          <label className="label">Password</label>
-          <div className="sdk-wrap" data-state={pwState}>
-            <input
-              className="rald-input"
-              type="password"
-              autoComplete="new-password"
-              placeholder="Min. 8 characters"
-              value={password}
-              onChange={(e) => { setPassword(e.target.value); setPwState(e.target.value ? "typing" : "idle"); setError(""); }}
-              disabled={loading}
-            />
-          </div>
-        </div>
-
-        {error && <div className="error-bar" style={{ marginBottom: 16 }}>{error}</div>}
-
-        <button type="submit" className="btn-primary" disabled={loading} style={{ marginBottom: 16 }}>
-          {loading
-            ? <><span className="spinner" /> Creating account…</>
-            : "Create Account"
-          }
+        <button type="submit" className="btn-primary btn-amber"
+          style={{ marginBottom: 14 }} disabled={loading}>
+          {loading ? <><span className="spinner" /> Creating account…</> : "Create Account →"}
         </button>
 
-        <p style={{ textAlign: "center", fontSize: 13, color: "var(--muted)" }}>
+        <p className="hint" style={{ textAlign: "center" }}>
           Already have an account?{" "}
-          <button type="button" className="btn-link" onClick={() => navigate("/")}>Sign in</button>
+          <a href="/" style={{ color: "var(--green)" }}
+            onClick={(e) => { e.preventDefault(); navigate("/"); }}>
+            Sign in
+          </a>
         </p>
       </form>
-    </div>
+    </>
   );
 }
