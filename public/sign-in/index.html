@@ -1,0 +1,1534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RALD — Identity</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* ═══════════════════════════════════════════════
+           RALD IDENTITY — DESIGN SYSTEM
+           Light Mode · Custom Branded · No Dependencies
+           ═══════════════════════════════════════════════ */
+
+        :root {
+            /* ── Brand Colors ── */
+            --rald-brand:          #0F172A;
+            --rald-brand-light:    #1E293B;
+            --rald-accent:         #3B82F6;
+            --rald-accent-hover:   #2563EB;
+            --rald-accent-soft:    #EFF6FF;
+
+            /* ── Backgrounds ── */
+            --rald-bg-page:        #F8FAFC;
+            --rald-bg-card:        #FFFFFF;
+            --rald-bg-elevated:    #F1F5F9;
+            --rald-bg-input:       #FFFFFF;
+
+            /* ── Borders ── */
+            --rald-border:         #E2E8F0;
+            --rald-border-hover:   #CBD5E1;
+            --rald-border-focus:   #3B82F6;
+
+            /* ── Text ── */
+            --rald-text-primary:   #0F172A;
+            --rald-text-secondary: #64748B;
+            --rald-text-muted:     #94A3B8;
+            --rald-text-inverse:   #FFFFFF;
+
+            /* ── Status ── */
+            --rald-error:          #DC2626;
+            --rald-error-bg:       #FEF2F2;
+            --rald-error-border:   #FECACA;
+            --rald-success:        #16A34A;
+            --rald-success-bg:     #F0FDF4;
+            --rald-success-border: #BBF7D0;
+
+            /* ── Shadows ── */
+            --rald-shadow-sm:      0 1px 2px 0 rgba(15, 23, 42, 0.04);
+            --rald-shadow-md:      0 4px 6px -1px rgba(15, 23, 42, 0.06), 0 2px 4px -2px rgba(15, 23, 42, 0.04);
+            --rald-shadow-lg:      0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.04);
+            --rald-shadow-xl:      0 20px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
+            --rald-shadow-glow:    0 0 0 3px rgba(59, 130, 246, 0.15);
+
+            /* ── Radius ── */
+            --rald-radius-sm:      8px;
+            --rald-radius-md:      12px;
+            --rald-radius-lg:      16px;
+            --rald-radius-xl:      20px;
+            --rald-radius-full:    9999px;
+
+            /* ── Transitions ── */
+            --rald-transition:     all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            --rald-transition-slow: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--rald-bg-page);
+            color: var(--rald-text-primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* ═══════════════════════════════════════════════
+           ANIMATIONS
+           ═══════════════════════════════════════════════ */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(24px) scale(0.98); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-12px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes pulse-ring {
+            0%   { transform: scale(0.8); opacity: 0.5; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+        @keyframes shimmer {
+            0%   { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50%      { transform: translateY(-6px); }
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        @keyframes checkmark {
+            0%   { stroke-dashoffset: 24; }
+            100% { stroke-dashoffset: 0; }
+        }
+
+        /* ═══════════════════════════════════════════════
+           BACKGROUND DECORATIONS
+           ═══════════════════════════════════════════════ */
+        .rald-bg-decoration {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+        .rald-bg-decoration::before {
+            content: '';
+            position: absolute;
+            top: -20%;
+            right: -10%;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+        .rald-bg-decoration::after {
+            content: '';
+            position: absolute;
+            bottom: -20%;
+            left: -10%;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(15,23,42,0.04) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+        .rald-bg-dot {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: var(--rald-border);
+            border-radius: 50%;
+            opacity: 0.4;
+        }
+
+        /* ═══════════════════════════════════════════════
+           MAIN CONTAINER
+           ═══════════════════════════════════════════════ */
+        .rald-container {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 440px;
+            animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        /* ═══════════════════════════════════════════════
+           BRAND HEADER
+           ═══════════════════════════════════════════════ */
+        .rald-brand {
+            text-align: center;
+            margin-bottom: 32px;
+            animation: fadeIn 0.8s ease 0.1s both;
+        }
+        .rald-brand-mark {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 56px;
+            height: 56px;
+            background: var(--rald-brand);
+            border-radius: var(--rald-radius-lg);
+            margin-bottom: 20px;
+            position: relative;
+            box-shadow: var(--rald-shadow-lg);
+            transition: var(--rald-transition);
+        }
+        .rald-brand-mark:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: var(--rald-shadow-xl);
+        }
+        .rald-brand-mark svg {
+            width: 28px;
+            height: 28px;
+            color: white;
+        }
+        .rald-brand-mark::after {
+            content: '';
+            position: absolute;
+            inset: -4px;
+            border-radius: var(--rald-radius-lg);
+            border: 2px solid var(--rald-accent);
+            opacity: 0;
+            transition: var(--rald-transition);
+        }
+        .rald-brand-mark:hover::after {
+            opacity: 0.3;
+            inset: -6px;
+        }
+        .rald-brand h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            color: var(--rald-text-primary);
+            line-height: 1.2;
+        }
+        .rald-brand-tagline {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--rald-text-muted);
+            margin-top: 6px;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+        }
+
+        /* ═══════════════════════════════════════════════
+           AUTH CARD
+           ═══════════════════════════════════════════════ */
+        .rald-card {
+            background: var(--rald-bg-card);
+            border: 1px solid var(--rald-border);
+            border-radius: var(--rald-radius-xl);
+            padding: 36px;
+            box-shadow: var(--rald-shadow-xl);
+            position: relative;
+            overflow: hidden;
+            transition: var(--rald-transition);
+        }
+        .rald-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--rald-accent), #60A5FA, var(--rald-accent));
+            background-size: 200% 100%;
+            animation: shimmer 3s linear infinite;
+        }
+        .rald-card:hover {
+            box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.12);
+        }
+
+        /* ═══════════════════════════════════════════════
+           THIRD PARTY HEADER
+           ═══════════════════════════════════════════════ */
+        .rald-third-party {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 16px 20px;
+            background: linear-gradient(135deg, var(--rald-accent-soft), #F8FAFC);
+            border: 1px solid var(--rald-border);
+            border-radius: var(--rald-radius-md);
+            margin: -36px -36px 24px -36px;
+            border-radius: var(--rald-radius-xl) var(--rald-radius-xl) var(--rald-radius-md) var(--rald-radius-md);
+            border-bottom: 1px solid var(--rald-border);
+            animation: slideIn 0.5s ease 0.3s both;
+        }
+        .rald-third-party-icon {
+            width: 40px;
+            height: 40px;
+            background: white;
+            border: 1px solid var(--rald-border);
+            border-radius: var(--rald-radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--rald-shadow-sm);
+        }
+        .rald-third-party-icon svg {
+            width: 20px;
+            height: 20px;
+            color: var(--rald-text-secondary);
+        }
+        .rald-third-party-info p {
+            font-size: 13px;
+            color: var(--rald-text-secondary);
+            line-height: 1.4;
+        }
+        .rald-third-party-info strong {
+            color: var(--rald-text-primary);
+            font-weight: 600;
+        }
+        .rald-third-party-arrow {
+            margin-left: auto;
+            color: var(--rald-text-muted);
+        }
+
+        /* ═══════════════════════════════════════════════
+           TABS
+           ═══════════════════════════════════════════════ */
+        .rald-tabs {
+            display: flex;
+            gap: 4px;
+            background: var(--rald-bg-elevated);
+            border: 1px solid var(--rald-border);
+            border-radius: var(--rald-radius-md);
+            padding: 4px;
+            margin-bottom: 24px;
+        }
+        .rald-tab {
+            flex: 1;
+            padding: 10px 16px;
+            background: transparent;
+            border: none;
+            border-radius: var(--rald-radius-sm);
+            color: var(--rald-text-secondary);
+            font-size: 13px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: var(--rald-transition);
+            position: relative;
+            overflow: hidden;
+        }
+        .rald-tab::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: white;
+            border-radius: var(--rald-radius-sm);
+            opacity: 0;
+            transform: scale(0.9);
+            transition: var(--rald-transition);
+            box-shadow: var(--rald-shadow-sm);
+        }
+        .rald-tab.active {
+            color: var(--rald-text-primary);
+        }
+        .rald-tab.active::before {
+            opacity: 1;
+            transform: scale(1);
+        }
+        .rald-tab span {
+            position: relative;
+            z-index: 1;
+        }
+        .rald-tab:hover:not(.active) {
+            color: var(--rald-text-primary);
+        }
+
+        /* ═══════════════════════════════════════════════
+           CARD HEADER
+           ═══════════════════════════════════════════════ */
+        .rald-card-header {
+            margin-bottom: 24px;
+            animation: fadeIn 0.5s ease 0.2s both;
+        }
+        .rald-card-header h2 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--rald-text-primary);
+            letter-spacing: -0.02em;
+            line-height: 1.3;
+        }
+        .rald-card-header p {
+            font-size: 14px;
+            color: var(--rald-text-secondary);
+            margin-top: 6px;
+            line-height: 1.5;
+        }
+
+        /* ═══════════════════════════════════════════════
+           SOCIAL BUTTON
+           ═══════════════════════════════════════════════ */
+        .rald-social-btn {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 12px 16px;
+            background: var(--rald-bg-input);
+            border: 1.5px solid var(--rald-border);
+            border-radius: var(--rald-radius-md);
+            color: var(--rald-text-primary);
+            font-size: 14px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: var(--rald-transition);
+            text-decoration: none;
+            position: relative;
+            overflow: hidden;
+        }
+        .rald-social-btn::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, transparent, rgba(59,130,246,0.04));
+            opacity: 0;
+            transition: var(--rald-transition);
+        }
+        .rald-social-btn:hover {
+            border-color: var(--rald-border-hover);
+            transform: translateY(-1px);
+            box-shadow: var(--rald-shadow-md);
+        }
+        .rald-social-btn:hover::before {
+            opacity: 1;
+        }
+        .rald-social-btn:active {
+            transform: translateY(0);
+        }
+        .rald-social-btn svg {
+            width: 18px;
+            height: 18px;
+            position: relative;
+            z-index: 1;
+        }
+        .rald-social-btn span {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ═══════════════════════════════════════════════
+           DIVIDER
+           ═══════════════════════════════════════════════ */
+        .rald-divider {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin: 20px 0;
+        }
+        .rald-divider::before,
+        .rald-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--rald-border), transparent);
+        }
+        .rald-divider span {
+            font-size: 11px;
+            color: var(--rald-text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-weight: 600;
+        }
+
+        /* ═══════════════════════════════════════════════
+           FORM ELEMENTS
+           ═══════════════════════════════════════════════ */
+        .rald-form {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .rald-input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            animation: fadeIn 0.4s ease both;
+        }
+        .rald-input-group:nth-child(1) { animation-delay: 0.1s; }
+        .rald-input-group:nth-child(2) { animation-delay: 0.15s; }
+        .rald-input-group:nth-child(3) { animation-delay: 0.2s; }
+
+        .rald-input-group label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--rald-text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .rald-input-group label .optional {
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--rald-text-muted);
+            font-style: italic;
+        }
+
+        .rald-input {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--rald-bg-input);
+            border: 1.5px solid var(--rald-border);
+            border-radius: var(--rald-radius-md);
+            color: var(--rald-text-primary);
+            font-size: 15px;
+            font-family: inherit;
+            font-weight: 500;
+            transition: var(--rald-transition);
+            outline: none;
+        }
+        .rald-input::placeholder {
+            color: var(--rald-text-muted);
+            font-weight: 400;
+        }
+        .rald-input:hover {
+            border-color: var(--rald-border-hover);
+        }
+        .rald-input:focus {
+            border-color: var(--rald-border-focus);
+            box-shadow: var(--rald-shadow-glow);
+        }
+        .rald-input.error {
+            border-color: var(--rald-error);
+            box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+        }
+        .rald-input:disabled {
+            background: var(--rald-bg-elevated);
+            cursor: not-allowed;
+        }
+
+        /* ── Phone Input ── */
+        .rald-phone-wrap {
+            display: flex;
+            gap: 10px;
+        }
+        .rald-phone-prefix {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 14px;
+            background: var(--rald-bg-elevated);
+            border: 1.5px solid var(--rald-border);
+            border-radius: var(--rald-radius-md);
+            color: var(--rald-text-secondary);
+            font-size: 14px;
+            font-weight: 600;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: var(--rald-transition);
+        }
+        .rald-phone-prefix:hover {
+            border-color: var(--rald-border-hover);
+        }
+        .rald-phone-prefix .flag {
+            font-size: 18px;
+        }
+        .rald-phone-prefix .chevron {
+            width: 14px;
+            height: 14px;
+            color: var(--rald-text-muted);
+        }
+
+        /* ── Quick Select ── */
+        .rald-quick-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--rald-text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-top: 4px;
+        }
+        .rald-quick-select {
+            display: flex;
+            gap: 8px;
+            margin-top: 6px;
+        }
+        .rald-quick-btn {
+            flex: 1;
+            padding: 8px 4px;
+            background: var(--rald-bg-elevated);
+            border: 1.5px solid var(--rald-border);
+            border-radius: var(--rald-radius-sm);
+            color: var(--rald-text-secondary);
+            font-size: 13px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: var(--rald-transition);
+        }
+        .rald-quick-btn:hover {
+            border-color: var(--rald-accent);
+            color: var(--rald-accent);
+            background: var(--rald-accent-soft);
+        }
+        .rald-quick-btn:active {
+            transform: scale(0.96);
+        }
+
+        /* ── OTP Input ── */
+        .rald-otp-container {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 8px 0;
+        }
+        .rald-otp-input {
+            width: 52px;
+            height: 60px;
+            text-align: center;
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: 0;
+            background: var(--rald-bg-input);
+            border: 2px solid var(--rald-border);
+            border-radius: var(--rald-radius-md);
+            color: var(--rald-text-primary);
+            font-family: 'Space Grotesk', sans-serif;
+            transition: var(--rald-transition);
+            outline: none;
+        }
+        .rald-otp-input::placeholder {
+            color: var(--rald-text-muted);
+            font-size: 18px;
+        }
+        .rald-otp-input:focus {
+            border-color: var(--rald-accent);
+            box-shadow: var(--rald-shadow-glow);
+            transform: translateY(-2px);
+        }
+        .rald-otp-input.filled {
+            border-color: var(--rald-accent);
+            background: var(--rald-accent-soft);
+            color: var(--rald-accent);
+        }
+
+        /* ═══════════════════════════════════════════════
+           BUTTONS
+           ═══════════════════════════════════════════════ */
+        .rald-btn {
+            width: 100%;
+            padding: 13px 20px;
+            border-radius: var(--rald-radius-md);
+            font-size: 14px;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            transition: var(--rald-transition);
+            border: none;
+            outline: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            position: relative;
+            overflow: hidden;
+            letter-spacing: -0.01em;
+        }
+        .rald-btn::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, transparent, rgba(255,255,255,0.15));
+            opacity: 0;
+            transition: var(--rald-transition);
+        }
+        .rald-btn:hover::before {
+            opacity: 1;
+        }
+
+        .rald-btn-primary {
+            background: linear-gradient(135deg, var(--rald-accent), var(--rald-accent-hover));
+            color: var(--rald-text-inverse);
+            box-shadow: 0 4px 14px rgba(59, 130, 246, 0.35);
+        }
+        .rald-btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.45);
+        }
+        .rald-btn-primary:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+        }
+        .rald-btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .rald-btn-secondary {
+            background: var(--rald-bg-elevated);
+            color: var(--rald-text-secondary);
+            border: 1.5px solid var(--rald-border);
+        }
+        .rald-btn-secondary:hover {
+            background: var(--rald-bg-card);
+            border-color: var(--rald-border-hover);
+            color: var(--rald-text-primary);
+            transform: translateY(-1px);
+        }
+
+        .rald-btn-ghost {
+            background: transparent;
+            color: var(--rald-text-secondary);
+            font-weight: 600;
+        }
+        .rald-btn-ghost:hover {
+            color: var(--rald-text-primary);
+            background: var(--rald-bg-elevated);
+        }
+
+        /* ═══════════════════════════════════════════════
+           LOADING STATES
+           ═══════════════════════════════════════════════ */
+        .rald-spinner {
+            width: 18px;
+            height: 18px;
+            border: 2.5px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.75s linear infinite;
+        }
+        .rald-spinner-dark {
+            border-color: var(--rald-border);
+            border-top-color: var(--rald-accent);
+        }
+
+        /* ═══════════════════════════════════════════════
+           ALERTS / MESSAGES
+           ═══════════════════════════════════════════════ */
+        .rald-alert {
+            padding: 12px 16px;
+            border-radius: var(--rald-radius-md);
+            font-size: 13px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: fadeIn 0.3s ease;
+            line-height: 1.5;
+        }
+        .rald-alert svg {
+            flex-shrink: 0;
+            width: 18px;
+            height: 18px;
+        }
+        .rald-alert-error {
+            background: var(--rald-error-bg);
+            border: 1.5px solid var(--rald-error-border);
+            color: var(--rald-error);
+        }
+        .rald-alert-success {
+            background: var(--rald-success-bg);
+            border: 1.5px solid var(--rald-success-border);
+            color: var(--rald-success);
+        }
+
+        /* ═══════════════════════════════════════════════
+           FOOTER
+           ═══════════════════════════════════════════════ */
+        .rald-footer {
+            text-align: center;
+            margin-top: 20px;
+            animation: fadeIn 0.5s ease 0.4s both;
+        }
+        .rald-footer p {
+            font-size: 13px;
+            color: var(--rald-text-secondary);
+            font-weight: 500;
+        }
+        .rald-footer a {
+            color: var(--rald-accent);
+            text-decoration: none;
+            font-weight: 700;
+            transition: var(--rald-transition);
+            position: relative;
+        }
+        .rald-footer a::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--rald-accent);
+            transition: var(--rald-transition);
+            border-radius: 1px;
+        }
+        .rald-footer a:hover::after {
+            width: 100%;
+        }
+        .rald-footer a:hover {
+            color: var(--rald-accent-hover);
+        }
+
+        /* ═══════════════════════════════════════════════
+           TRUST BADGE
+           ═══════════════════════════════════════════════ */
+        .rald-trust {
+            text-align: center;
+            margin-top: 28px;
+            animation: fadeIn 0.5s ease 0.5s both;
+        }
+        .rald-trust-inner {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--rald-bg-card);
+            border: 1px solid var(--rald-border);
+            border-radius: var(--rald-radius-full);
+            box-shadow: var(--rald-shadow-sm);
+        }
+        .rald-trust-inner svg {
+            width: 14px;
+            height: 14px;
+            color: var(--rald-success);
+        }
+        .rald-trust-inner span {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--rald-text-muted);
+            letter-spacing: 0.02em;
+        }
+        .rald-trust-inner strong {
+            color: var(--rald-text-secondary);
+            font-weight: 700;
+        }
+
+        /* ═══════════════════════════════════════════════
+           UTILITIES
+           ═══════════════════════════════════════════════ */
+        .hidden { display: none !important; }
+        .text-center { text-align: center; }
+        .mt-2 { margin-top: 8px; }
+        .mt-3 { margin-top: 12px; }
+        .mt-4 { margin-top: 16px; }
+        .mb-2 { margin-bottom: 8px; }
+        .flex { display: flex; }
+        .items-center { align-items: center; }
+        .justify-between { justify-content: space-between; }
+        .gap-2 { gap: 8px; }
+        .text-sm { font-size: 13px; }
+        .text-xs { font-size: 11px; }
+        .text-muted { color: var(--rald-text-muted); }
+        .text-secondary { color: var(--rald-text-secondary); }
+        .font-medium { font-weight: 500; }
+        .font-semibold { font-weight: 600; }
+
+        /* ── Checkbox ── */
+        .rald-checkbox-wrap {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+        .rald-checkbox-wrap input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            border: 1.5px solid var(--rald-border);
+            border-radius: 5px;
+            accent-color: var(--rald-accent);
+            cursor: pointer;
+        }
+        .rald-checkbox-wrap span {
+            font-size: 13px;
+            color: var(--rald-text-secondary);
+            font-weight: 500;
+        }
+
+        /* ── Terms text ── */
+        .rald-terms {
+            font-size: 12px;
+            color: var(--rald-text-muted);
+            line-height: 1.6;
+            font-weight: 500;
+        }
+        .rald-terms a {
+            color: var(--rald-text-secondary);
+            text-decoration: underline;
+            text-underline-offset: 2px;
+            transition: var(--rald-transition);
+        }
+        .rald-terms a:hover {
+            color: var(--rald-accent);
+        }
+
+        /* ── Forgot password ── */
+        .rald-forgot-link {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--rald-text-muted);
+            text-decoration: none;
+            transition: var(--rald-transition);
+        }
+        .rald-forgot-link:hover {
+            color: var(--rald-accent);
+        }
+
+        /* ═══════════════════════════════════════════════
+           SUCCESS STATE
+           ═══════════════════════════════════════════════ */
+        .rald-success-state {
+            text-align: center;
+            padding: 20px 0;
+            animation: fadeInUp 0.5s ease;
+        }
+        .rald-success-icon {
+            width: 64px;
+            height: 64px;
+            background: var(--rald-success-bg);
+            border: 2px solid var(--rald-success-border);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+        }
+        .rald-success-icon svg {
+            width: 28px;
+            height: 28px;
+            color: var(--rald-success);
+            stroke-dasharray: 24;
+            animation: checkmark 0.5s ease 0.2s both;
+        }
+        .rald-success-state h3 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--rald-text-primary);
+            margin-bottom: 8px;
+        }
+        .rald-success-state p {
+            font-size: 14px;
+            color: var(--rald-text-secondary);
+        }
+
+        /* ═══════════════════════════════════════════════
+           RESPONSIVE
+           ═══════════════════════════════════════════════ */
+        @media (max-width: 480px) {
+            body { padding: 16px; }
+            .rald-card { padding: 24px; border-radius: var(--rald-radius-lg); }
+            .rald-third-party { margin: -24px -24px 20px -24px; border-radius: var(--rald-radius-lg) var(--rald-radius-lg) var(--rald-radius-md) var(--rald-radius-md); }
+            .rald-brand h1 { font-size: 24px; }
+            .rald-card-header h2 { font-size: 20px; }
+            .rald-otp-input { width: 44px; height: 52px; font-size: 18px; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Background Decorations -->
+    <div class="rald-bg-decoration">
+        <div class="rald-bg-dot" style="top: 15%; left: 10%;"></div>
+        <div class="rald-bg-dot" style="top: 25%; right: 15%;"></div>
+        <div class="rald-bg-dot" style="top: 60%; left: 5%;"></div>
+        <div class="rald-bg-dot" style="top: 70%; right: 8%;"></div>
+        <div class="rald-bg-dot" style="top: 40%; left: 20%;"></div>
+        <div class="rald-bg-dot" style="top: 85%; left: 30%;"></div>
+        <div class="rald-bg-dot" style="top: 10%; right: 30%;"></div>
+        <div class="rald-bg-dot" style="top: 50%; right: 5%;"></div>
+    </div>
+
+    <div class="rald-container">
+        <!-- ═══════════════════════════════════════════
+             BRAND HEADER
+             ═══════════════════════════════════════════ -->
+        <div class="rald-brand">
+            <div class="rald-brand-mark">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                    <path d="M2 17l10 5 10-5"/>
+                    <path d="M2 12l10 5 10-5"/>
+                </svg>
+            </div>
+            <h1>RALD</h1>
+            <p class="rald-brand-tagline">Identity Platform</p>
+        </div>
+
+        <!-- ═══════════════════════════════════════════
+             AUTH CARD
+             ═══════════════════════════════════════════ -->
+        <div class="rald-card">
+
+            <!-- Third Party Context -->
+            <div id="thirdPartyHeader" class="rald-third-party hidden">
+                <div class="rald-third-party-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2"/>
+                        <path d="M3 9h18"/>
+                        <path d="M9 21V9"/>
+                    </svg>
+                </div>
+                <div class="rald-third-party-info">
+                    <p>Sign in to <strong id="appName">App Name</strong></p>
+                </div>
+                <svg class="rald-third-party-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+            </div>
+
+            <!-- Main Tabs -->
+            <div class="rald-tabs">
+                <button class="rald-tab active" data-tab="signin" onclick="switchTab('signin')">
+                    <span>Sign In</span>
+                </button>
+                <button class="rald-tab" data-tab="signup" onclick="switchTab('signup')">
+                    <span>Sign Up</span>
+                </button>
+            </div>
+
+            <!-- Card Header -->
+            <div class="rald-card-header">
+                <h2 id="cardTitle">Welcome back</h2>
+                <p id="cardSubtitle">Enter your email or phone to continue</p>
+            </div>
+
+            <!-- Alert Messages -->
+            <div id="alertMessage" class="rald-alert hidden"></div>
+
+            <!-- ═══════════════════════════════════════
+                 SIGN IN FORM
+                 ═══════════════════════════════════════ -->
+            <div id="signinPanel">
+
+                <!-- Social Login -->
+                <button class="rald-social-btn" onclick="handleOAuth('google')">
+                    <svg viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    <span>Continue with Google</span>
+                </button>
+
+                <div class="rald-divider"><span>or</span></div>
+
+                <!-- Method Tabs -->
+                <div class="rald-tabs" style="margin-bottom: 16px;">
+                    <button class="rald-tab active" data-method="email" onclick="switchMethod('email')">
+                        <span>Email</span>
+                    </button>
+                    <button class="rald-tab" data-method="phone" onclick="switchMethod('phone')">
+                        <span>Phone</span>
+                    </button>
+                </div>
+
+                <!-- Email Sign In -->
+                <form id="emailForm" class="rald-form" onsubmit="handleEmailSignIn(event)">
+                    <div class="rald-input-group">
+                        <label>Email address</label>
+                        <input type="email" class="rald-input" placeholder="you@example.com" required autocomplete="email">
+                    </div>
+                    <div class="rald-input-group">
+                        <label>Password</label>
+                        <input type="password" class="rald-input" placeholder="Enter your password" required autocomplete="current-password">
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <label class="rald-checkbox-wrap">
+                            <input type="checkbox">
+                            <span>Remember me</span>
+                        </label>
+                        <a href="#" class="rald-forgot-link" onclick="showForgotPassword(); return false;">Forgot password?</a>
+                    </div>
+                    <button type="submit" class="rald-btn rald-btn-primary" id="emailSigninBtn">
+                        Continue
+                    </button>
+                </form>
+
+                <!-- Phone Sign In -->
+                <form id="phoneForm" class="rald-form hidden" onsubmit="handlePhoneSignIn(event)">
+                    <div class="rald-input-group">
+                        <label>Phone number</label>
+                        <div class="rald-phone-wrap">
+                            <div class="rald-phone-prefix" onclick="toggleCountryPicker()">
+                                <span class="flag">🇳🇬</span>
+                                <span>+234</span>
+                                <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                    <path d="M6 9l6 6 6-6"/>
+                                </svg>
+                            </div>
+                            <input type="tel" class="rald-input" placeholder="801 234 5678" required style="flex:1;">
+                        </div>
+                        <p class="text-xs text-muted mt-2">Local number — +234 added automatically</p>
+                    </div>
+                    <div>
+                        <p class="rald-quick-label">Quick select</p>
+                        <div class="rald-quick-select">
+                            <button type="button" class="rald-quick-btn" onclick="fillPhone('080')">080</button>
+                            <button type="button" class="rald-quick-btn" onclick="fillPhone('070')">070</button>
+                            <button type="button" class="rald-quick-btn" onclick="fillPhone('090')">090</button>
+                            <button type="button" class="rald-quick-btn" onclick="fillPhone('081')">081</button>
+                        </div>
+                    </div>
+                    <button type="submit" class="rald-btn rald-btn-primary" id="phoneSigninBtn">
+                        Send Code
+                    </button>
+                </form>
+
+                <!-- OTP Verification -->
+                <form id="otpForm" class="rald-form hidden" onsubmit="handleOTPVerify(event)">
+                    <div class="rald-input-group text-center">
+                        <label>Enter verification code</label>
+                        <p class="text-sm text-secondary mt-2 mb-3">
+                            We sent a 6-digit code to <strong id="otpTarget" class="text-secondary" style="color: var(--rald-text-primary);">your phone</strong>
+                        </p>
+                        <div class="rald-otp-container">
+                            <input type="text" class="rald-otp-input" maxlength="1" data-index="0" oninput="handleOTPInput(this, 0)" onkeydown="handleOTPKeydown(event, 0)" inputmode="numeric">
+                            <input type="text" class="rald-otp-input" maxlength="1" data-index="1" oninput="handleOTPInput(this, 1)" onkeydown="handleOTPKeydown(event, 1)" inputmode="numeric">
+                            <input type="text" class="rald-otp-input" maxlength="1" data-index="2" oninput="handleOTPInput(this, 2)" onkeydown="handleOTPKeydown(event, 2)" inputmode="numeric">
+                            <input type="text" class="rald-otp-input" maxlength="1" data-index="3" oninput="handleOTPInput(this, 3)" onkeydown="handleOTPKeydown(event, 3)" inputmode="numeric">
+                            <input type="text" class="rald-otp-input" maxlength="1" data-index="4" oninput="handleOTPInput(this, 4)" onkeydown="handleOTPKeydown(event, 4)" inputmode="numeric">
+                            <input type="text" class="rald-otp-input" maxlength="1" data-index="5" oninput="handleOTPInput(this, 5)" onkeydown="handleOTPKeydown(event, 5)" inputmode="numeric">
+                        </div>
+                    </div>
+                    <button type="submit" class="rald-btn rald-btn-primary" id="otpBtn">
+                        Verify & Continue
+                    </button>
+                    <button type="button" class="rald-btn rald-btn-ghost" onclick="resendCode()">
+                        Didn't receive it? <span style="color: var(--rald-accent);">Resend</span>
+                    </button>
+                </form>
+
+                <!-- Forgot Password -->
+                <form id="forgotForm" class="rald-form hidden" onsubmit="handleForgotPassword(event)">
+                    <div class="rald-input-group">
+                        <label>Email address</label>
+                        <input type="email" class="rald-input" placeholder="you@example.com" required>
+                    </div>
+                    <button type="submit" class="rald-btn rald-btn-primary" id="forgotBtn">
+                        Send Reset Link
+                    </button>
+                    <button type="button" class="rald-btn rald-btn-ghost" onclick="backToSignIn()">
+                        ← Back to sign in
+                    </button>
+                </form>
+            </div>
+
+            <!-- ═══════════════════════════════════════
+                 SIGN UP FORM
+                 ═══════════════════════════════════════ -->
+            <div id="signupPanel" class="hidden">
+                <form class="rald-form" onsubmit="handleSignUp(event)">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div class="rald-input-group">
+                            <label>First name</label>
+                            <input type="text" class="rald-input" placeholder="John" required>
+                        </div>
+                        <div class="rald-input-group">
+                            <label>Last name</label>
+                            <input type="text" class="rald-input" placeholder="Doe" required>
+                        </div>
+                    </div>
+                    <div class="rald-input-group">
+                        <label>Email address</label>
+                        <input type="email" class="rald-input" placeholder="you@example.com" required autocomplete="email">
+                    </div>
+                    <div class="rald-input-group">
+                        <label>Password <span class="optional">min 8 characters</span></label>
+                        <input type="password" class="rald-input" placeholder="Create a strong password" required minlength="8">
+                    </div>
+                    <p class="rald-terms">
+                        By continuing, you agree to RALD's <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.
+                    </p>
+                    <button type="submit" class="rald-btn rald-btn-primary" id="signupBtn">
+                        Create account
+                    </button>
+                </form>
+
+                <div class="rald-divider"><span>or</span></div>
+
+                <button class="rald-social-btn" onclick="handleOAuth('google')">
+                    <svg viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    <span>Continue with Google</span>
+                </button>
+            </div>
+
+            <!-- Footer -->
+            <div class="rald-footer">
+                <p id="footerText">
+                    No account? <a href="#" onclick="switchTab('signup'); return false;">Create one</a>
+                </p>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════
+             TRUST BADGE
+             ═══════════════════════════════════════════ -->
+        <div class="rald-trust">
+            <div class="rald-trust-inner">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+                <span>Secured by <strong>RALD Identity</strong></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════
+         JAVASCRIPT
+         ═══════════════════════════════════════════════════ -->
+    <script>
+        // ===== STATE =====
+        let currentTab = 'signin';
+        let currentMethod = 'email';
+        let otpValues = ['', '', '', '', '', ''];
+
+        // ===== URL PARAMS (Third Party Context) =====
+        const urlParams = new URLSearchParams(window.location.search);
+        const clientId = urlParams.get('client_id');
+        const redirectUri = urlParams.get('redirect_uri');
+        const appName = urlParams.get('app_name') || 'App Name';
+        const state = urlParams.get('state');
+
+        if (clientId) {
+            document.getElementById('thirdPartyHeader').classList.remove('hidden');
+            document.getElementById('appName').textContent = appName;
+        }
+
+        // ===== TAB SWITCHING =====
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.rald-tab[data-tab]').forEach(t => {
+                t.classList.toggle('active', t.dataset.tab === tab);
+            });
+            document.getElementById('signinPanel').classList.toggle('hidden', tab !== 'signin');
+            document.getElementById('signupPanel').classList.toggle('hidden', tab !== 'signup');
+
+            const title = document.getElementById('cardTitle');
+            const subtitle = document.getElementById('cardSubtitle');
+            const footer = document.getElementById('footerText');
+
+            if (tab === 'signin') {
+                title.textContent = 'Welcome back';
+                subtitle.textContent = 'Enter your email or phone to continue';
+                footer.innerHTML = 'No account? <a href="#" onclick="switchTab('signup'); return false;">Create one</a>';
+            } else {
+                title.textContent = 'Create your account';
+                subtitle.textContent = 'Join RALD Identity in seconds';
+                footer.innerHTML = 'Already have an account? <a href="#" onclick="switchTab('signin'); return false;">Sign in</a>';
+            }
+            hideAlert();
+        }
+
+        // ===== METHOD SWITCHING =====
+        function switchMethod(method) {
+            currentMethod = method;
+            document.querySelectorAll('.rald-tab[data-method]').forEach(t => {
+                t.classList.toggle('active', t.dataset.method === method);
+            });
+            document.getElementById('emailForm').classList.toggle('hidden', method !== 'email');
+            document.getElementById('phoneForm').classList.toggle('hidden', method !== 'phone');
+            document.getElementById('otpForm').classList.add('hidden');
+            document.getElementById('forgotForm').classList.add('hidden');
+            hideAlert();
+        }
+
+        // ===== ALERTS =====
+        function showAlert(message, type = 'error') {
+            const el = document.getElementById('alertMessage');
+            el.className = `rald-alert rald-alert-${type}`;
+            const icon = type === 'error' 
+                ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'
+                : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>';
+            el.innerHTML = `${icon}<span>${message}</span>`;
+            el.classList.remove('hidden');
+        }
+
+        function hideAlert() {
+            document.getElementById('alertMessage').classList.add('hidden');
+        }
+
+        // ===== LOADING =====
+        function setLoading(btnId, loading, text = 'Please wait...') {
+            const btn = document.getElementById(btnId);
+            if (loading) {
+                btn.disabled = true;
+                btn.innerHTML = `<span class="rald-spinner"></span> ${text}`;
+            } else {
+                btn.disabled = false;
+                btn.innerHTML = btn.dataset.originalText;
+            }
+        }
+
+        // ===== EMAIL SIGN IN =====
+        async function handleEmailSignIn(e) {
+            e.preventDefault();
+            hideAlert();
+            setLoading('emailSigninBtn', true);
+
+            const form = e.target;
+            const email = form.querySelector('input[type="email"]').value;
+            const password = form.querySelector('input[type="password"]').value;
+
+            try {
+                const response = await fetch('/api/auth/sign-in', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password, clientId, redirectUri, state })
+                });
+                const data = await response.json();
+                if (data.success) handleAuthSuccess(data);
+                else showAlert(data.message || 'Invalid credentials');
+            } catch (err) {
+                showAlert('Network error. Please try again.');
+            } finally {
+                setLoading('emailSigninBtn', false);
+            }
+        }
+
+        // ===== PHONE SIGN IN =====
+        async function handlePhoneSignIn(e) {
+            e.preventDefault();
+            hideAlert();
+            setLoading('phoneSigninBtn', true, 'Sending...');
+
+            const form = e.target;
+            const phone = '+234' + form.querySelector('input[type="tel"]').value.replace(/\D/g, '');
+
+            try {
+                const response = await fetch('/api/auth/phone/send-code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone, clientId })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    document.getElementById('phoneForm').classList.add('hidden');
+                    document.getElementById('otpForm').classList.remove('hidden');
+                    document.getElementById('otpTarget').textContent = phone;
+                    document.getElementById('cardTitle').textContent = 'Verify your phone';
+                    document.getElementById('cardSubtitle').textContent = 'Enter the 6-digit code we sent';
+                    setTimeout(() => document.querySelector('.rald-otp-input[data-index="0"]')?.focus(), 100);
+                } else {
+                    showAlert(data.message || 'Failed to send code');
+                }
+            } catch (err) {
+                showAlert('Network error. Please try again.');
+            } finally {
+                setLoading('phoneSigninBtn', false, 'Send Code');
+            }
+        }
+
+        // ===== OTP HANDLING =====
+        function handleOTPInput(input, index) {
+            input.value = input.value.replace(/\D/g, '');
+            otpValues[index] = input.value;
+            input.classList.toggle('filled', input.value !== '');
+            if (input.value && index < 5) {
+                document.querySelector(`.rald-otp-input[data-index="${index + 1}"]`)?.focus();
+            }
+            // Auto-submit when all filled
+            if (otpValues.every(v => v !== '')) {
+                setTimeout(() => document.getElementById('otpBtn').click(), 200);
+            }
+        }
+
+        function handleOTPKeydown(e, index) {
+            if (e.key === 'Backspace' && !e.target.value && index > 0) {
+                document.querySelector(`.rald-otp-input[data-index="${index - 1}"]`)?.focus();
+            }
+        }
+
+        async function handleOTPVerify(e) {
+            e.preventDefault();
+            hideAlert();
+            setLoading('otpBtn', true);
+
+            const code = otpValues.join('');
+            const phone = document.getElementById('otpTarget').textContent;
+
+            if (code.length !== 6) {
+                showAlert('Please enter all 6 digits');
+                setLoading('otpBtn', false);
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/auth/phone/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone, code, clientId, redirectUri, state })
+                });
+                const data = await response.json();
+                if (data.success) handleAuthSuccess(data);
+                else {
+                    showAlert(data.message || 'Invalid code');
+                    document.querySelectorAll('.rald-otp-input').forEach(i => { i.value = ''; i.classList.remove('filled'); });
+                    otpValues = ['', '', '', '', '', ''];
+                    document.querySelector('.rald-otp-input[data-index="0"]')?.focus();
+                }
+            } catch (err) {
+                showAlert('Network error. Please try again.');
+            } finally {
+                setLoading('otpBtn', false);
+            }
+        }
+
+        async function resendCode() {
+            const phone = document.getElementById('otpTarget').textContent;
+            try {
+                const response = await fetch('/api/auth/phone/send-code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone, clientId })
+                });
+                const data = await response.json();
+                if (data.success) showAlert('Code resent successfully', 'success');
+            } catch (err) {
+                showAlert('Failed to resend code');
+            }
+        }
+
+        // ===== SIGN UP =====
+        async function handleSignUp(e) {
+            e.preventDefault();
+            hideAlert();
+            setLoading('signupBtn', true);
+
+            const form = e.target;
+            const inputs = form.querySelectorAll('input');
+            const firstName = inputs[0].value;
+            const lastName = inputs[1].value;
+            const email = inputs[2].value;
+            const password = inputs[3].value;
+
+            try {
+                const response = await fetch('/api/auth/sign-up', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ firstName, lastName, email, password, clientId, redirectUri, state })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    if (data.requiresVerification) {
+                        showAlert('Check your email for verification link', 'success');
+                    } else {
+                        handleAuthSuccess(data);
+                    }
+                } else {
+                    showAlert(data.message || 'Failed to create account');
+                }
+            } catch (err) {
+                showAlert('Network error. Please try again.');
+            } finally {
+                setLoading('signupBtn', false);
+            }
+        }
+
+        // ===== FORGOT PASSWORD =====
+        function showForgotPassword() {
+            document.getElementById('emailForm').classList.add('hidden');
+            document.getElementById('phoneForm').classList.add('hidden');
+            document.getElementById('otpForm').classList.add('hidden');
+            document.getElementById('forgotForm').classList.remove('hidden');
+            document.getElementById('cardTitle').textContent = 'Reset password';
+            document.getElementById('cardSubtitle').textContent = 'We'll send you a reset link';
+            hideAlert();
+        }
+
+        function backToSignIn() {
+            document.getElementById('forgotForm').classList.add('hidden');
+            switchMethod('email');
+            document.getElementById('cardTitle').textContent = 'Welcome back';
+            document.getElementById('cardSubtitle').textContent = 'Enter your email or phone to continue';
+        }
+
+        async function handleForgotPassword(e) {
+            e.preventDefault();
+            hideAlert();
+            setLoading('forgotBtn', true, 'Sending...');
+
+            const email = e.target.querySelector('input[type="email"]').value;
+            try {
+                const response = await fetch('/api/auth/forgot-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    showAlert('Reset link sent to your email', 'success');
+                } else {
+                    showAlert(data.message || 'Failed to send reset link');
+                }
+            } catch (err) {
+                showAlert('Network error. Please try again.');
+            } finally {
+                setLoading('forgotBtn', false, 'Send Reset Link');
+            }
+        }
+
+        // ===== OAUTH =====
+        function handleOAuth(provider) {
+            const params = new URLSearchParams({
+                provider, client_id: clientId || '',
+                redirect_uri: redirectUri || '', state: state || ''
+            });
+            window.location.href = `/api/auth/oauth/${provider}?${params}`;
+        }
+
+        // ===== AUTH SUCCESS =====
+        function handleAuthSuccess(data) {
+            if (clientId && redirectUri) {
+                const params = new URLSearchParams({ code: data.authCode, state: state || '' });
+                window.location.href = `${redirectUri}?${params}`;
+            } else {
+                window.location.href = '/profile';
+            }
+        }
+
+        // ===== PHONE HELPERS =====
+        function fillPhone(prefix) {
+            const input = document.querySelector('#phoneForm input[type="tel"]');
+            input.value = prefix;
+            input.focus();
+        }
+
+        function toggleCountryPicker() {
+            // Placeholder for country picker modal
+            console.log('Country picker would open here');
+        }
+
+        // ===== INIT =====
+        document.querySelectorAll('.rald-btn-primary').forEach(btn => {
+            btn.dataset.originalText = btn.textContent.trim();
+        });
+    </script>
+</body>
+</html>
