@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Completing sign in — RALD</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #0a0a0a;
+            color: #e5e5e5;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            text-align: center;
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 2px solid #262626;
+            border-top-color: #e5e5e5;
+            border-radius: 50%;
+            animation: spin 0.75s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        h2 { font-size: 18px; font-weight: 500; margin-bottom: 8px; }
+        p { font-size: 14px; color: #737373; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="spinner"></div>
+        <h2>Completing sign in...</h2>
+        <p>Please wait while we verify your account</p>
+    </div>
+    <script>
+        // Handle OAuth callback from Clerk
+        async function handleCallback() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            const state = urlParams.get('state');
+            const error = urlParams.get('error');
+
+            if (error) {
+                document.querySelector('h2').textContent = 'Authentication failed';
+                document.querySelector('p').textContent = error;
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/auth/sso-callback', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code, state })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // If this was a popup, notify opener and close
+                    if (window.opener) {
+                        window.opener.postMessage({
+                            type: 'RALD_AUTH_SUCCESS',
+                            code: data.authCode,
+                            state: state
+                        }, '*');
+                        window.close();
+                    } else {
+                        // Direct redirect
+                        window.location.href = data.redirectUrl || '/profile';
+                    }
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (err) {
+                document.querySelector('h2').textContent = 'Something went wrong';
+                document.querySelector('p').textContent = err.message;
+            }
+        }
+
+        handleCallback();
+    </script>
+</body>
+</html>
