@@ -1,6 +1,10 @@
 import { useState, useEffect, createContext, useContext } from "react";
 import { Router, Route, Switch, useLocation } from "wouter";
-import { api, saveToken, clearToken, getToken, type AuthUser } from "./lib/api";
+import {
+  api, saveToken, clearToken, getToken,
+  saveRedirect, getRedirectTo, getAppId, clearRedirect,
+  type AuthUser,
+} from "./lib/api";
 import IdentityPage  from "./pages/Identity";
 import VerifyPage    from "./pages/Verify";
 import PasswordPage  from "./pages/Password";
@@ -110,16 +114,56 @@ export default function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // ── Step 1: Capture redirect params from URL immediately ───────────────
+    // This runs on every page load, so redirect_to is preserved even if the
+    // user lands directly on /password, /signup, /reset, etc.
+    const params     = new URLSearchParams(window.location.search);
+    const redirectTo = params.get("redirect_to") ?? params.get("redirect");
+    const appId      = params.get("app_id") ?? params.get("appId") ?? "rald-app";
+    if (redirectTo) saveRedirect(redirectTo, appId);
+
+    // ── Step 2: Check for an existing valid session ───────────────────────
     const token = getToken();
     if (!token) { setLoading(false); return; }
+
     api.me()
-      .then((u) => setUser(u))
+      .then(async (u) => {
+        setUser(u);
+
+        // ── Step 3: Auto-redirect if session is valid + redirect target exists
+        // Handles: user already logged in → visits profiles.rald.cloud?redirect_to=...
+        // They must not be asked to log in again.
+        const storedRedirect = getRedirectTo();
+        if (storedRedirect) {
+          const storedAppId = getAppId();
+          clearRedirect();
+          try {
+            const sso = await api.ssoExchange(storedAppId);
+            const url = new URL(storedRedirect);
+            url.searchParams.set("rald_token", sso.token);
+            url.searchParams.set("app_id", storedAppId);
+            window.location.href = url.toString();
+          } catch {
+            // SSO exchange failed — redirect anyway without token.
+            window.location.href = storedRedirect;
+          }
+          return;
+        }
+      })
       .catch(() => clearToken())
       .finally(() => setLoading(false));
   }, []);
 
   const login  = (token: string, u: AuthUser) => { saveToken(token); setUser(u); };
   const logout = () => { clearToken(); setUser(null); };
+
+  if (loading) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", background: "var(--bg)" }}>
+        <span className="spinner" style={{ color: "var(--green)", width: 28, height: 28, borderWidth: 3 }} />
+      </div>
+    );
+  }
 
   return (
     <AuthContext.Provider value={{ user, loading, login, logout }}>
