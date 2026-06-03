@@ -8,21 +8,29 @@
       "suspicious": {
         "noExplicitAny": "warn",
         "noConfusingVoidType": "warn",
-        "noArrayIndexKey": "warn"
+        "noArrayIndexKey": "warn",
+        "noRedundantUseStrict": "warn"
       },
       "style": {
         "noNonNullAssertion": "warn",
         "useImportType": "off",
-        "useTemplate": "warn"
+        "useTemplate": "warn",
+        "useNumberNamespace": "warn",
+        "useArrowFunction": "warn",
+        "noForEach": "warn"
       },
       "correctness": {
         "noUnusedVariables": "warn",
         "noUnusedImports": "warn",
         "useExhaustiveDependencies": "warn"
       },
+      "complexity": {
+        "noForEach": "warn"
+      },
       "a11y": {
         "noLabelWithoutControl": "off",
-        "useButtonType": "off"
+        "useButtonType": "off",
+        "noAutofocus": "warn"
       }
     }
   },
