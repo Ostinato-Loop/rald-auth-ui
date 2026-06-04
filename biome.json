@@ -15,9 +15,7 @@
         "noNonNullAssertion": "warn",
         "useImportType": "off",
         "useTemplate": "warn",
-        "useNumberNamespace": "warn",
-        "useArrowFunction": "warn",
-        "noForEach": "warn"
+        "useNumberNamespace": "warn"
       },
       "correctness": {
         "noUnusedVariables": "warn",
