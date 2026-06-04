@@ -3,6 +3,35 @@ import { useLocation } from "wouter";
 import { api } from "../lib/api";
 import { useAuth } from "../App";
 
+// ── Post-auth SSO redirect (RALD Identity Axiom) ─────────────────────────────
+// If the user arrived from a product app, exchange master token for app-scoped
+// token and redirect back to the product — no second login required.
+async function postAuthRedirect(token: string, navigate: (path: string) => void): Promise<void> {
+  const params     = new URLSearchParams(window.location.search);
+  const redirectTo = params.get('redirect_to') ?? sessionStorage.getItem('rald_redirect_to');
+  const appId      = params.get('app_id')      ?? sessionStorage.getItem('rald_app_id') ?? '';
+
+  if (redirectTo && appId) {
+    sessionStorage.removeItem('rald_redirect_to');
+    sessionStorage.removeItem('rald_app_id');
+    try {
+      const res = await fetch('https://auth.rald.cloud/sso/exchange', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body:    JSON.stringify({ appId }),
+      });
+      if (res.ok) {
+        const data = await res.json() as { token: string };
+        window.location.href = decodeURIComponent(redirectTo) +
+          '?rald_token=' + encodeURIComponent(data.token) + '&app_id=' + encodeURIComponent(appId);
+        return;
+      }
+    } catch { /* fall through to default */ }
+  }
+  navigate('/');
+}
+
+
 type Tab = "password" | "phone" | "email";
 type Step = "input" | "otp";
 
@@ -14,6 +43,15 @@ export default function LoginPage() {
   const [step, setStep] = useState<Step>("input");
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
+  // Save redirect context from URL params for post-auth use
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    const r = p.get('redirect_to'); const a = p.get('app_id');
+    if (r) sessionStorage.setItem('rald_redirect_to', r);
+    if (a) sessionStorage.setItem('rald_app_id', a);
+  }, []);
+
+
 
   // Password tab
   const [email, setEmail] = useState("");
@@ -62,7 +100,7 @@ export default function LoginPage() {
     try {
       const res = await api.login(email, password);
       login(res.token, res.user);
-      navigate("/");
+      await postAuthRedirect(res.token, navigate);
     } catch (ex: unknown) {
       setErr(ex instanceof Error ? ex.message : "Login failed");
     } finally {
