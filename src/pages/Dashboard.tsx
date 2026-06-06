@@ -13,7 +13,7 @@ import {
 } from "../lib/api";
 import { useLocation } from "wouter";
 
-type Tab = "profile" | "apps" | "sessions" | "devices" | "activity" | "security" | "organizations" | "audit";
+type Tab = "profile" | "apps" | "sessions" | "devices" | "activity" | "security" | "organizations" | "audit" | "privacy";
 
 const ICONS: Record<string, string> = {
   loop: "🎵", messenger: "💬", "rald-inbox": "📥", payrald: "💳",
