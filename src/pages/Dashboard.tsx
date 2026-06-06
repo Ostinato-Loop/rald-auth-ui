@@ -656,6 +656,171 @@ function AuditTab({ auditLogs }: { auditLogs: AuditLogEntry[] }) {
 export default function DashboardPage() {
   const { user, logout } = useAuth();
   const [, navigate] = useLocation();
+
+/* ── Privacy Tab — Phase 3 ─────────────────────────────────────────────────── */
+function PrivacyTab({ userEmail }: { userEmail: string }) {
+  const [loading, setLoading]   = useState(false);
+  const [exporting, setExport]  = useState(false);
+  const [perms, setPerms]       = useState({ profile_visible: true, activity_tracking: true, marketing_emails: true });
+  const [deleteStep, setDelete] = useState<0 | 1 | 2>(0);
+  const [msg, setMsg]           = useState<string | null>(null);
+
+  async function handleExport() {
+    setExport(true);
+    try {
+      const resp = await fetch(`${import.meta.env.VITE_API_URL ?? "https://auth.rald.cloud"}/privacy/export`, {
+        headers: { "Authorization": `Bearer ${localStorage.getItem("rald_token")}` },
+      });
+      const blob = await resp.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      a.href     = url;
+      a.download = `rald-data-${new Date().toISOString().split("T")[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch { setMsg("Export failed. Please try again."); }
+    finally { setExport(false); }
+  }
+
+  async function handlePermChange(key: keyof typeof perms, val: boolean) {
+    const next = { ...perms, [key]: val };
+    setPerms(next);
+    try {
+      const token = localStorage.getItem("rald_token");
+      await fetch(`${import.meta.env.VITE_API_URL ?? "https://auth.rald.cloud"}/privacy/permissions`, {
+        method: "PATCH",
+        headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ [key]: val }),
+      });
+    } catch { /* silent — UI already updated */ }
+  }
+
+  async function handleDeleteRequest() {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("rald_token");
+      const resp  = await fetch(`${import.meta.env.VITE_API_URL ?? "https://auth.rald.cloud"}/privacy/delete-request`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm: true, reason: "User initiated from dashboard" }),
+      });
+      if (resp.ok) setDelete(2);
+      else { const r = await resp.json() as { error?: string }; setMsg(r.error ?? "Request failed."); }
+    } catch { setMsg("Request failed. Please try again."); }
+    finally { setLoading(false); }
+  }
+
+  const Row = ({ label, desc, val, onChange }: { label: string; desc: string; val: boolean; onChange: (v: boolean) => void }) => (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 0", borderBottom: "1px solid var(--border-2)" }}>
+      <div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{label}</div>
+        <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>{desc}</div>
+      </div>
+      <button onClick={() => onChange(!val)} style={{
+        width: 42, height: 24, borderRadius: 12, border: "none", cursor: "pointer", position: "relative",
+        background: val ? "var(--green)" : "var(--surface)", transition: "background 0.2s",
+        boxShadow: "inset 0 1px 3px rgba(0,0,0,.3)",
+      }}>
+        <span style={{
+          position: "absolute", top: 3, left: val ? 20 : 3, width: 18, height: 18,
+          borderRadius: "50%", background: "#fff", transition: "left 0.2s",
+          boxShadow: "0 1px 3px rgba(0,0,0,.3)",
+        }} />
+      </button>
+    </div>
+  );
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      {msg && (
+        <div style={{ padding: "10px 14px", borderRadius: 10, background: "var(--red-dim)", border: "1px solid var(--red-border)", color: "var(--red)", fontSize: 13 }}>
+          {msg}
+        </div>
+      )}
+
+      {/* Data export */}
+      <SectionCard>
+        <SectionTitle>Your Data</SectionTitle>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600 }}>Download My Data</div>
+            <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>Get a full JSON export of your identity, activity, sessions, and devices.</div>
+          </div>
+          <button onClick={handleExport} disabled={exporting} style={{
+            background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 9,
+            padding: "8px 16px", fontSize: 12, fontWeight: 700, color: "var(--text)",
+            cursor: exporting ? "not-allowed" : "pointer", opacity: exporting ? 0.6 : 1,
+          }}>
+            {exporting ? "Exporting…" : "⬇ Export"}
+          </button>
+        </div>
+        <div style={{ fontSize: 11, color: "var(--muted)", padding: "8px 12px", background: "var(--surface)", borderRadius: 8, border: "1px solid var(--border-2)" }}>
+          📍 Data stored in Nigeria region · Retained while account is active
+        </div>
+      </SectionCard>
+
+      {/* Permission controls */}
+      <SectionCard>
+        <SectionTitle>Privacy Controls</SectionTitle>
+        <Row label="Public profile" desc="Let other RALD users find and see your profile."
+          val={perms.profile_visible} onChange={v => void handlePermChange("profile_visible", v)} />
+        <Row label="Activity tracking" desc="Improve recommendations based on your usage."
+          val={perms.activity_tracking} onChange={v => void handlePermChange("activity_tracking", v)} />
+        <Row label="Marketing emails" desc="Receive product updates and announcements from RALD."
+          val={perms.marketing_emails} onChange={v => void handlePermChange("marketing_emails", v)} />
+        <div style={{ paddingTop: 10, fontSize: 11, color: "var(--muted)" }}>
+          Changes take effect immediately. <a href="https://learn.rald.cloud/privacy" target="_blank" rel="noopener noreferrer" style={{ color: "var(--green)" }}>Privacy policy →</a>
+        </div>
+      </SectionCard>
+
+      {/* Delete account */}
+      <SectionCard style={{ border: "1px solid var(--red-border)" }}>
+        <SectionTitle>Danger Zone</SectionTitle>
+        {deleteStep === 0 && (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600 }}>Delete Account</div>
+              <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>Permanently remove your account and all associated data in 30 days.</div>
+            </div>
+            <button onClick={() => setDelete(1)} style={{
+              background: "var(--red-dim)", border: "1px solid var(--red-border)", borderRadius: 9,
+              padding: "8px 16px", fontSize: 12, fontWeight: 700, color: "var(--red)", cursor: "pointer",
+            }}>Delete…</button>
+          </div>
+        )}
+        {deleteStep === 1 && (
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--red)", marginBottom: 8 }}>⚠ Are you sure?</div>
+            <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 14, lineHeight: 1.6 }}>
+              Your account <strong style={{ color: "var(--text)" }}>{userEmail}</strong> will be scheduled for deletion in 30 days. All your data, sessions, organizations, and verification status will be permanently removed. This cannot be undone.
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => setDelete(0)} style={{
+                flex: 1, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 9,
+                padding: "9px 0", fontSize: 12, fontWeight: 700, color: "var(--muted)", cursor: "pointer",
+              }}>Cancel</button>
+              <button onClick={() => void handleDeleteRequest()} disabled={loading} style={{
+                flex: 1, background: "var(--red-dim)", border: "1px solid var(--red-border)", borderRadius: 9,
+                padding: "9px 0", fontSize: 12, fontWeight: 700, color: "var(--red)",
+                cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.6 : 1,
+              }}>{loading ? "Requesting…" : "Yes, delete my account"}</button>
+            </div>
+          </div>
+        )}
+        {deleteStep === 2 && (
+          <div style={{ textAlign: "center", padding: "10px 0" }}>
+            <div style={{ fontSize: 18, marginBottom: 8 }}>✅</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>Deletion scheduled</div>
+            <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.6 }}>
+              Your account will be deleted in 30 days. You can cancel by contacting <a href="mailto:privacy@rald.cloud" style={{ color: "var(--green)" }}>privacy@rald.cloud</a>.
+            </div>
+          </div>
+        )}
+      </SectionCard>
+    </div>
+  );
+}
+
   const [tab, setTab] = useState<Tab>("profile");
 
   const [profile,      setProfile]      = useState<ProfileData | null>(null);
@@ -699,6 +864,7 @@ export default function DashboardPage() {
     { id: "security",      label: "Security", icon: "🛡️" },
     { id: "organizations", label: "Orgs",     icon: "🏢" },
     { id: "audit",         label: "Audit",    icon: "🔍" },
+    { id: "privacy",       label: "Privacy",  icon: "🔒" },
   ];
 
   return (
@@ -784,7 +950,9 @@ export default function DashboardPage() {
         {tab === "security"      && <SecurityTab      verification={verification} userEmail={user?.email ?? ""} onSignOut={handleRevokeAll} />}
         {tab === "organizations" && <OrganizationsTab organizations={organizations} onRefresh={loadOrgs} />}
         {tab === "audit"         && <AuditTab         auditLogs={auditLogs} />}
+        {tab === "privacy"       && <PrivacyTab        userEmail={user?.email ?? ""} />}
       </div>
     </div>
   );
 }
+
