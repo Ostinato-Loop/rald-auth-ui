@@ -660,14 +660,14 @@ function SecurityTab({ verification, userEmail, onSignOut }: {
 
       <SectionCard>
         <SectionTitle>Recent Security Events</SectionTitle>
-        <a href="#" onClick={e => { e.preventDefault(); onSignOut(); }}
+        <button type="button" onClick={() => { onSignOut(); }}
           style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: "var(--card)", borderRadius: 10, border: "1px solid var(--border)", textDecoration: "none", cursor: "pointer" }}>
           <div>
             <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>Sign out of all devices</div>
             <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>Revokes all active sessions immediately</div>
           </div>
           <span style={{ color: "var(--red)", fontSize: 12, fontWeight: 700 }}>Sign out all →</span>
-        </a>
+        </button>
       </SectionCard>
     </div>
   );
