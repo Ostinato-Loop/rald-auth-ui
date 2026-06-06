@@ -267,7 +267,8 @@ function ConnectedAppsTab({ apps, provisionedIds, onRefresh }: {
         const connected = connectedMap[app.id];
         const isProvisioned = provisionedIds.includes(app.id);
         const color = app.color;
-        const perms = connected?.role ? [connected.role, ...DEFAULT_PERMISSIONS[app.id].slice(1)] : DEFAULT_PERMISSIONS[app.id];
+        const defaultPerms = DEFAULT_PERMISSIONS[app.id] ?? [];
+        const perms = connected?.role ? [connected.role, ...defaultPerms.slice(1)] : defaultPerms;
         return (
           <div key={app.id} style={{
             background: "var(--surface)", borderRadius: 14,
