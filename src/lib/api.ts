@@ -1,5 +1,5 @@
 // RALD Identity — API Client
-// Phase G.10: Added profile, apps launcher, connectedApps, revokeAll, activity
+// Phase H: Foundation Hardening — Organizations, Audit Logs, Verification, Security
 // LILCKY STUDIO LIMITED
 
 const BASE = import.meta.env.VITE_AUTH_API_URL ?? "https://auth.rald.cloud";
@@ -42,6 +42,8 @@ export type ProfileData = {
   phone: string | null;
   avatar_url: string | null;
   bio: string | null;
+  email_verified: boolean;
+  phone_verified: boolean;
   preferences: Record<string, unknown>;
   provisioned_apps: string[];
   active_products: string[];
@@ -91,6 +93,38 @@ export type DeviceEntry = {
   is_trusted?: boolean;
   trusted?: boolean;
   last_seen_at: string;
+};
+
+export type OrgEntry = {
+  id: string;
+  name: string;
+  handle: string;
+  type: string;
+  description: string | null;
+  avatar_url: string | null;
+  created_at: string;
+  created_by: string;
+  member_role: string;
+  joined_at: string;
+};
+
+export type AuditLogEntry = {
+  id: string;
+  action: string;
+  resource_type: string | null;
+  resource_id: string | null;
+  ip_address: string | null;
+  user_agent: string | null;
+  status: string;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+};
+
+export type VerificationStatus = {
+  email: string | null;
+  email_verified: boolean;
+  phone: string | null;
+  phone_verified: boolean;
 };
 
 // ── Token helpers ─────────────────────────────────────────────────────────
@@ -196,14 +230,14 @@ export const api = {
   removeDevice: (id: string) => req<{ message: string }>(`/session/device/${id}`, { method: "DELETE" }),
   trustDevice:  (id: string) => req<{ message: string }>(`/devices/${id}/trust`,  { method: "POST"   }),
 
-  // Profile (Phase G.10)
+  // Profile
   profile:       ()             => req<ProfileData>("/profiles/me"),
   updateProfile: (data: { display_name?: string; bio?: string; avatar_url?: string }) =>
     req<{ ok: boolean }>("/profiles/me", { method: "PATCH", body: JSON.stringify(data) }),
 
   // App Launcher
-  appLauncher:   ()             => req<{ apps: EcosystemApp[]; provisioned_count: number }>("/profiles/apps"),
-  connectedApps: ()             => req<{ connected_apps: ConnectedApp[]; count: number }>("/profiles/connected-apps"),
+  appLauncher:   ()              => req<{ apps: EcosystemApp[]; provisioned_count: number }>("/profiles/apps"),
+  connectedApps: ()              => req<{ connected_apps: ConnectedApp[]; count: number }>("/profiles/connected-apps"),
   provisionApp:  (appId: string) =>
     req<{ ok: boolean; app_url: string | null }>("/provision/app", {
       method: "POST", body: JSON.stringify({ app_id: appId }),
@@ -211,4 +245,19 @@ export const api = {
 
   // Activity
   activity: (limit = 50) => req<{ activity: ActivityEntry[] }>(`/profiles/activity?limit=${limit}`),
+
+  // Organizations (Phase H)
+  organizations:      ()         => req<{ organizations: OrgEntry[]; count: number }>("/profiles/organizations"),
+  createOrganization: (data: { name: string; handle: string; type?: string; description?: string }) =>
+    req<{ ok: boolean; organization: OrgEntry }>("/profiles/organizations", {
+      method: "POST", body: JSON.stringify(data),
+    }),
+  leaveOrganization:  (orgId: string) =>
+    req<{ ok: boolean }>(`/profiles/organizations/${orgId}`, { method: "DELETE" }),
+
+  // Audit Logs (Phase H)
+  auditLogs: (limit = 50) => req<{ audit_logs: AuditLogEntry[]; count: number }>(`/profiles/audit-logs?limit=${limit}`),
+
+  // Verification Status (Phase H)
+  verificationStatus: () => req<VerificationStatus>("/profiles/verification"),
 };
