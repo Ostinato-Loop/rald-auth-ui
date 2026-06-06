@@ -1,15 +1,41 @@
+// RALD Identity — Profiles Dashboard
+// Phase H: Foundation Hardening — Security + Organizations + Audit Logs tabs
+// App.RALD.Cloud / Profiles.RALD.Cloud — "Google My Account for RALD"
+// LILCKY STUDIO LIMITED
+
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../App";
-import { api, clearToken, type ProfileData, type EcosystemApp, type SessionEntry, type DeviceEntry, type ActivityEntry, type ConnectedApp } from "../lib/api";
+import {
+  api, clearToken,
+  type ProfileData, type EcosystemApp, type SessionEntry,
+  type DeviceEntry, type ActivityEntry, type ConnectedApp,
+  type OrgEntry, type AuditLogEntry, type VerificationStatus,
+} from "../lib/api";
 import { useLocation } from "wouter";
 
-type Tab = "profile" | "apps" | "sessions" | "devices" | "activity";
+type Tab = "profile" | "apps" | "sessions" | "devices" | "activity" | "security" | "organizations" | "audit";
 
 const ICONS: Record<string, string> = {
   loop: "🎵", messenger: "💬", "rald-inbox": "📥", payrald: "💳",
   dunarald: "🛒", gitrald: "⚙️", raldtics: "📊", profiles: "👤",
+  manilla: "🎶",
 };
 
+const ORG_TYPE_ICONS: Record<string, string> = {
+  radio: "📻", media: "📡", business: "💼", community: "🏘️",
+  education: "📚", general: "🏢",
+};
+
+const AUDIT_ACTION_ICONS: Record<string, string> = {
+  login: "🔑", login_failed: "❌", logout: "🚪", register: "✅",
+  otp_sent: "📱", otp_verified: "✔️", otp_failed: "⚠️",
+  password_reset_requested: "🔄", password_reset_completed: "🔒",
+  session_created: "🟢", session_revoked: "🚫", all_sessions_revoked: "⛔",
+  sso_exchange: "🔄", sso_handoff_issued: "🎫", app_provisioned: "📦",
+  account_suspended: "🔴", rate_limited: "⏱️", redirect_rejected: "🛡️",
+};
+
+/* ── shared helpers ─────────────────────────────────────────────────────── */
 function Avatar({ name, size = 48 }: { name: string | null; size?: number }) {
   const initials = (name ?? "?").split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
   return (
@@ -28,6 +54,7 @@ function Avatar({ name, size = 48 }: { name: string | null; size?: number }) {
 function Badge({ role }: { role: string }) {
   const colors: Record<string, string> = {
     admin: "#FF3B30", operator: "#F4B400", merchant: "#2EB67D", user: "#5A6A7A",
+    artist: "#9B59B6", label: "#E67E22", manager: "#3498DB",
   };
   return (
     <span style={{
@@ -40,8 +67,45 @@ function Badge({ role }: { role: string }) {
   );
 }
 
-// ── Profile Tab ───────────────────────────────────────────────────────────────
-function ProfileTab({ profile, onUpdated }: { profile: ProfileData | null; onUpdated: () => void }) {
+function VerificationPill({ verified, label }: { verified: boolean; label: string }) {
+  return (
+    <span style={{
+      display: "inline-flex", alignItems: "center", gap: 4,
+      padding: "3px 10px", borderRadius: 20, fontSize: 11, fontWeight: 700,
+      background: verified ? "var(--green-dim)" : "var(--surface)",
+      border: `1px solid ${verified ? "var(--green-border)" : "var(--border-2)"}`,
+      color: verified ? "var(--green)" : "var(--muted)",
+    }}>
+      {verified ? "✓" : "○"} {label}
+    </span>
+  );
+}
+
+function SectionCard({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
+  return (
+    <div style={{
+      background: "var(--surface)", borderRadius: 14, padding: "16px 18px",
+      border: "1px solid var(--border)", ...style,
+    }}>
+      {children}
+    </div>
+  );
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>
+      {children}
+    </div>
+  );
+}
+
+/* ── Profile Tab ─────────────────────────────────────────────────────────── */
+function ProfileTab({ profile, verification, onUpdated }: {
+  profile: ProfileData | null;
+  verification: VerificationStatus | null;
+  onUpdated: () => void;
+}) {
   const [name, setName] = useState(profile?.name ?? "");
   const [bio, setBio] = useState(profile?.bio ?? "");
   const [saving, setSaving] = useState(false);
@@ -67,22 +131,35 @@ function ProfileTab({ profile, onUpdated }: { profile: ProfileData | null; onUpd
   if (!profile) return <div style={{ textAlign: "center", padding: 32, color: "var(--muted)" }}>Loading profile…</div>;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <div style={{ background: "var(--surface)", borderRadius: 14, padding: "16px 18px", border: "1px solid var(--border)" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* Identity card */}
+      <SectionCard>
         <div style={{ display: "flex", gap: 14, alignItems: "center", marginBottom: 14 }}>
           <Avatar name={profile.name} size={52} />
-          <div>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 18, fontWeight: 800 }}>{profile.name ?? "Anonymous"}</div>
-            <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600, letterSpacing: "0.04em" }}>{profile.rald_id}</div>
+            <div style={{ fontSize: 12, color: "var(--green)", fontWeight: 700, letterSpacing: "0.04em" }}>{profile.rald_id}</div>
+            <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{profile.email}</div>
           </div>
           <Badge role={profile.role} />
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 16px" }}>
+
+        {/* Verification status */}
+        {verification && (
+          <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+            <VerificationPill verified={verification.email_verified} label="Email verified" />
+            <VerificationPill verified={verification.phone_verified} label="Phone verified" />
+          </div>
+        )}
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 16px" }}>
           {[
             ["Email", profile.email],
             ["Phone", profile.phone ?? "—"],
             ["Member since", new Date(profile.created_at).toLocaleDateString("en-GB", { month: "short", year: "numeric" })],
             ["Identity hub", "profiles.rald.cloud"],
+            ["Active apps", `${profile.active_products?.length ?? 0}`],
+            ["RALD ID", profile.rald_id],
           ].map(([label, value]) => (
             <div key={label}>
               <div style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</div>
@@ -90,44 +167,33 @@ function ProfileTab({ profile, onUpdated }: { profile: ProfileData | null; onUpd
             </div>
           ))}
         </div>
-      </div>
+      </SectionCard>
 
-      <form onSubmit={save} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        <div>
-          <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Display Name</label>
-          <input
-            className="rald-input"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            placeholder="How should we call you?"
-            maxLength={80}
-          />
-        </div>
-        <div>
-          <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Bio</label>
-          <textarea
-            style={{
-              width: "100%", background: "var(--surface)", border: "1px solid var(--border)",
-              borderRadius: 10, padding: "10px 14px", color: "var(--text)", fontSize: 14,
-              fontFamily: "inherit", resize: "vertical", minHeight: 80, outline: "none",
-            }}
-            value={bio}
-            onChange={e => setBio(e.target.value)}
-            placeholder="A short bio (optional)"
-            maxLength={300}
-          />
-        </div>
-        {err && <div style={{ color: "var(--red)", fontSize: 13 }}>{err}</div>}
-        {saved && <div style={{ color: "var(--green)", fontSize: 13 }}>✓ Profile saved</div>}
-        <button type="submit" className="btn-primary" disabled={saving} style={{ maxWidth: 160 }}>
-          {saving ? <span className="spinner" /> : "Save changes"}
-        </button>
-      </form>
+      {/* Edit form */}
+      <SectionCard>
+        <SectionTitle>Edit Profile</SectionTitle>
+        <form onSubmit={save} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div>
+            <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Display Name</label>
+            <input className="rald-input" value={name} onChange={e => setName(e.target.value)} placeholder="How should we call you?" maxLength={80} />
+          </div>
+          <div>
+            <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Bio</label>
+            <textarea style={{ width: "100%", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "10px 14px", color: "var(--text)", fontSize: 14, fontFamily: "inherit", resize: "vertical", minHeight: 80, outline: "none" }}
+              value={bio} onChange={e => setBio(e.target.value)} placeholder="A short bio (optional)" maxLength={300} />
+          </div>
+          {err && <div style={{ color: "var(--red)", fontSize: 13 }}>{err}</div>}
+          {saved && <div style={{ color: "var(--green)", fontSize: 13 }}>✓ Profile saved</div>}
+          <button type="submit" className="btn-primary" disabled={saving} style={{ maxWidth: 160 }}>
+            {saving ? <span className="spinner" /> : "Save changes"}
+          </button>
+        </form>
+      </SectionCard>
     </div>
   );
 }
 
-// ── Apps Tab ──────────────────────────────────────────────────────────────────
+/* ── Apps Tab ──────────────────────────────────────────────────────────────── */
 function AppsTab({ apps, onLaunch }: { apps: EcosystemApp[]; onLaunch: (app: EcosystemApp) => void }) {
   const [launching, setLaunching] = useState<string | null>(null);
   const [err, setErr] = useState("");
@@ -154,27 +220,20 @@ function AppsTab({ apps, onLaunch }: { apps: EcosystemApp[]; onLaunch: (app: Eco
   return (
     <div>
       <div style={{ marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <span style={{ fontSize: 12, color: "var(--muted)" }}>
-          {apps.filter(a => a.provisioned).length}/{apps.length} apps connected
-        </span>
+        <span style={{ fontSize: 12, color: "var(--muted)" }}>{apps.filter(a => a.provisioned).length}/{apps.length} apps connected</span>
       </div>
       {err && <div style={{ color: "var(--red)", fontSize: 12, marginBottom: 12 }}>{err}</div>}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 10 }}>
         {apps.map(app => (
-          <button
-            key={app.id}
-            onClick={() => launch(app)}
-            disabled={launching === app.id}
+          <button key={app.id} onClick={() => launch(app)} disabled={launching === app.id}
             style={{
               background: app.provisioned ? "var(--surface)" : "var(--card)",
               border: `1px solid ${app.provisioned ? "var(--green-border)" : "var(--border)"}`,
               borderRadius: 14, padding: "14px 12px", cursor: "pointer",
               display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
-              transition: "all 0.15s", textAlign: "center",
-              opacity: launching === app.id ? 0.6 : 1,
-            }}
-          >
-            <span style={{ fontSize: 26 }}>{ICONS[app.id] ?? "🔲"}</span>
+              transition: "all 0.15s", textAlign: "center", opacity: launching === app.id ? 0.6 : 1,
+            }}>
+            <span style={{ fontSize: 26 }}>{app.icon ?? ICONS[app.id] ?? "🔲"}</span>
             <div>
               <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{app.name}</div>
               <div style={{ fontSize: 10, color: app.provisioned ? "var(--green)" : "var(--muted)", fontWeight: 600, marginTop: 2 }}>
@@ -188,7 +247,7 @@ function AppsTab({ apps, onLaunch }: { apps: EcosystemApp[]; onLaunch: (app: Eco
   );
 }
 
-// ── Sessions Tab ──────────────────────────────────────────────────────────────
+/* ── Sessions Tab ──────────────────────────────────────────────────────────── */
 function SessionsTab({ sessions, onRevokeAll }: { sessions: SessionEntry[]; onRevokeAll: () => void }) {
   const [local, setLocal] = useState<SessionEntry[]>(sessions);
   const [loading, setLoading] = useState(false);
@@ -211,8 +270,7 @@ function SessionsTab({ sessions, onRevokeAll }: { sessions: SessionEntry[]; onRe
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
         <span style={{ fontSize: 12, color: "var(--muted)" }}>{local.length} active session{local.length !== 1 ? "s" : ""}</span>
-        <button
-          onClick={revokeAll} disabled={loading || local.length === 0}
+        <button onClick={revokeAll} disabled={loading || local.length === 0}
           style={{ background: "var(--red-dim)", border: "1px solid var(--red-border)", borderRadius: 8, padding: "5px 12px", color: "var(--red)", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
           Revoke all
         </button>
@@ -238,7 +296,7 @@ function SessionsTab({ sessions, onRevokeAll }: { sessions: SessionEntry[]; onRe
   );
 }
 
-// ── Devices Tab ───────────────────────────────────────────────────────────────
+/* ── Devices Tab ───────────────────────────────────────────────────────────── */
 function DevicesTab({ devices }: { devices: DeviceEntry[] }) {
   const [local, setLocal] = useState<DeviceEntry[]>(devices);
   const [loading, setLoading] = useState(false);
@@ -253,10 +311,8 @@ function DevicesTab({ devices }: { devices: DeviceEntry[] }) {
 
   async function trust(id: string) {
     setLoading(true);
-    try {
-      await api.trustDevice(id);
-      setLocal(l => l.map(d => d.id === id ? { ...d, is_trusted: true } : d));
-    } catch { /* best-effort */ } finally { setLoading(false); }
+    try { await api.trustDevice(id); setLocal(l => l.map(d => d.id === id ? { ...d, is_trusted: true } : d)); }
+    catch { /* best-effort */ } finally { setLoading(false); }
   }
 
   return (
@@ -268,7 +324,9 @@ function DevicesTab({ devices }: { devices: DeviceEntry[] }) {
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text)", display: "flex", alignItems: "center", gap: 6 }}>
               {d.device_type === "mobile" ? "📱" : "💻"} {d.device_name ?? d.device_type ?? "Unknown device"}
-              {(d.is_trusted || d.trusted) && <span style={{ fontSize: 10, color: "var(--green)", background: "var(--green-dim)", border: "1px solid var(--green-border)", borderRadius: 10, padding: "1px 7px" }}>Trusted</span>}
+              {(d.is_trusted || d.trusted) && (
+                <span style={{ fontSize: 10, color: "var(--green)", background: "var(--green-dim)", border: "1px solid var(--green-border)", borderRadius: 10, padding: "1px 7px" }}>Trusted</span>
+              )}
             </div>
             <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
               Last seen {d.last_seen_at ? new Date(d.last_seen_at).toLocaleDateString() : "—"}
@@ -292,7 +350,7 @@ function DevicesTab({ devices }: { devices: DeviceEntry[] }) {
   );
 }
 
-// ── Activity Tab ──────────────────────────────────────────────────────────────
+/* ── Activity Tab ──────────────────────────────────────────────────────────── */
 function ActivityTab({ activity }: { activity: ActivityEntry[] }) {
   if (activity.length === 0) return (
     <div style={{ textAlign: "center", padding: "24px 0", color: "var(--muted)", fontSize: 13 }}>No activity recorded</div>
@@ -315,106 +373,417 @@ function ActivityTab({ activity }: { activity: ActivityEntry[] }) {
   );
 }
 
-// ── MAIN DASHBOARD ─────────────────────────────────────────────────────────────
+/* ── Security Tab ──────────────────────────────────────────────────────────── */
+function SecurityTab({ verification, userEmail, onSignOut }: {
+  verification: VerificationStatus | null;
+  userEmail: string;
+  onSignOut: () => void;
+}) {
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+
+  async function sendPasswordReset() {
+    setResetLoading(true);
+    try {
+      await api.requestReset(userEmail);
+      setResetSent(true);
+      setShowResetConfirm(false);
+    } catch {
+      /* best-effort — email may not be confirmed yet */
+      setResetSent(true);
+    } finally { setResetLoading(false); }
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* Verification Status */}
+      <SectionCard>
+        <SectionTitle>Verification Status</SectionTitle>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: "var(--card)", borderRadius: 10, border: "1px solid var(--border)" }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600 }}>Email address</div>
+              <div style={{ fontSize: 11, color: "var(--muted)" }}>{verification?.email ?? userEmail}</div>
+            </div>
+            <VerificationPill verified={verification?.email_verified ?? false} label={verification?.email_verified ? "Verified" : "Not verified"} />
+          </div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: "var(--card)", borderRadius: 10, border: "1px solid var(--border)" }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600 }}>Phone number</div>
+              <div style={{ fontSize: 11, color: "var(--muted)" }}>{verification?.phone ?? "Not added"}</div>
+            </div>
+            <VerificationPill verified={verification?.phone_verified ?? false} label={verification?.phone_verified ? "Verified" : "Not verified"} />
+          </div>
+        </div>
+      </SectionCard>
+
+      {/* Password */}
+      <SectionCard>
+        <SectionTitle>Password</SectionTitle>
+        {resetSent ? (
+          <div style={{ background: "var(--green-dim)", border: "1px solid var(--green-border)", borderRadius: 10, padding: "12px 16px", color: "var(--green)", fontSize: 13 }}>
+            ✓ Password reset email sent to {verification?.email ?? userEmail}. Check your inbox.
+          </div>
+        ) : showResetConfirm ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <p style={{ fontSize: 13, color: "var(--muted)" }}>We'll send a reset link to <strong style={{ color: "var(--text)" }}>{verification?.email ?? userEmail}</strong>.</p>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={sendPasswordReset} disabled={resetLoading}
+                style={{ background: "var(--blue)", border: "none", borderRadius: 8, padding: "8px 16px", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                {resetLoading ? "Sending…" : "Send reset link"}
+              </button>
+              <button onClick={() => setShowResetConfirm(false)}
+                style={{ background: "none", border: "1px solid var(--border)", borderRadius: 8, padding: "8px 16px", color: "var(--muted)", fontSize: 12, cursor: "pointer" }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600 }}>Change password</div>
+              <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>Send a reset link to your email</div>
+            </div>
+            <button onClick={() => setShowResetConfirm(true)}
+              style={{ background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 8, padding: "7px 14px", color: "var(--text)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+              Change password
+            </button>
+          </div>
+        )}
+      </SectionCard>
+
+      {/* 2FA — placeholder for Phase I */}
+      <SectionCard>
+        <SectionTitle>Two-Factor Authentication</SectionTitle>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600 }}>Authenticator app</div>
+            <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>Coming in Phase I — TOTP support</div>
+          </div>
+          <span style={{ fontSize: 11, color: "var(--muted)", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 20, padding: "3px 10px", fontWeight: 700 }}>
+            Soon
+          </span>
+        </div>
+      </SectionCard>
+
+      {/* Danger zone */}
+      <SectionCard style={{ borderColor: "var(--red-border)" }}>
+        <SectionTitle>Danger Zone</SectionTitle>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600 }}>Sign out everywhere</div>
+            <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>Revoke all active sessions and sign out</div>
+          </div>
+          <button onClick={onSignOut}
+            style={{ background: "var(--red-dim)", border: "1px solid var(--red-border)", borderRadius: 8, padding: "7px 14px", color: "var(--red)", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+            Sign out all
+          </button>
+        </div>
+      </SectionCard>
+    </div>
+  );
+}
+
+/* ── Organizations Tab ─────────────────────────────────────────────────────── */
+function OrganizationsTab({ organizations, onRefresh }: {
+  organizations: OrgEntry[];
+  onRefresh: () => void;
+}) {
+  const [showCreate, setShowCreate] = useState(false);
+  const [name, setName] = useState("");
+  const [handle, setHandle] = useState("");
+  const [type, setType] = useState("general");
+  const [description, setDescription] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [err, setErr] = useState("");
+  const [leaving, setLeaving] = useState<string | null>(null);
+
+  const ORG_TYPES = [
+    { key: "general", label: "General" },
+    { key: "radio", label: "Radio Station" },
+    { key: "media", label: "Media House" },
+    { key: "business", label: "Business" },
+    { key: "community", label: "Community" },
+    { key: "education", label: "Education" },
+  ];
+
+  async function create(e: React.FormEvent) {
+    e.preventDefault();
+    setCreating(true); setErr("");
+    try {
+      await api.createOrganization({ name: name.trim(), handle: handle.trim(), type, description: description.trim() });
+      setShowCreate(false); setName(""); setHandle(""); setDescription(""); setType("general");
+      onRefresh();
+    } catch (ex) {
+      setErr(ex instanceof Error ? ex.message : "Could not create organization");
+    } finally { setCreating(false); }
+  }
+
+  async function leave(orgId: string) {
+    setLeaving(orgId);
+    try { await api.leaveOrganization(orgId); onRefresh(); }
+    catch { /* best-effort */ } finally { setLeaving(null); }
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span style={{ fontSize: 12, color: "var(--muted)" }}>{organizations.length} organization{organizations.length !== 1 ? "s" : ""}</span>
+        <button onClick={() => setShowCreate(s => !s)}
+          style={{ background: "var(--green-dim)", border: "1px solid var(--green-border)", borderRadius: 8, padding: "6px 14px", color: "var(--green)", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+          {showCreate ? "Cancel" : "+ New organization"}
+        </button>
+      </div>
+
+      {showCreate && (
+        <SectionCard>
+          <SectionTitle>Create Organization</SectionTitle>
+          <form onSubmit={create} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div>
+              <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Name *</label>
+              <input className="rald-input" value={name} onChange={e => setName(e.target.value)} placeholder="Organization name" maxLength={80} required />
+            </div>
+            <div>
+              <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Handle * (letters, numbers, - _)</label>
+              <input className="rald-input" value={handle} onChange={e => setHandle(e.target.value.toLowerCase().replace(/[^a-z0-9\-_]/g, ""))} placeholder="my-org" maxLength={40} required />
+            </div>
+            <div>
+              <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Type</label>
+              <select className="rald-input" value={type} onChange={e => setType(e.target.value)}>
+                {ORG_TYPES.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Description</label>
+              <input className="rald-input" value={description} onChange={e => setDescription(e.target.value)} placeholder="What is this organization?" maxLength={300} />
+            </div>
+            {err && <div style={{ color: "var(--red)", fontSize: 12 }}>{err}</div>}
+            <button type="submit" className="btn-primary" disabled={creating || !name.trim() || handle.length < 3}>
+              {creating ? "Creating…" : "Create organization"}
+            </button>
+          </form>
+        </SectionCard>
+      )}
+
+      {organizations.length === 0 && !showCreate && (
+        <div style={{ textAlign: "center", padding: "32px 0", color: "var(--muted)", fontSize: 13 }}>
+          <div style={{ fontSize: 28, marginBottom: 8 }}>🏢</div>
+          No organizations yet. Create or join one to get started.
+        </div>
+      )}
+
+      {organizations.map(org => (
+        <div key={org.id} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+          <div style={{ display: "flex", gap: 12, flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 28, flexShrink: 0 }}>{ORG_TYPE_ICONS[org.type] ?? "🏢"}</div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>{org.name}</div>
+              <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>@{org.handle} · {org.type}</div>
+              {org.description && <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4, lineHeight: 1.4 }}>{org.description}</div>}
+              <div style={{ display: "flex", gap: 6, marginTop: 6, alignItems: "center" }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: "var(--green)", background: "var(--green-dim)", border: "1px solid var(--green-border)", borderRadius: 10, padding: "2px 8px" }}>
+                  {org.member_role}
+                </span>
+                <span style={{ fontSize: 11, color: "var(--subtle)" }}>
+                  Joined {new Date(org.joined_at).toLocaleDateString("en-GB", { month: "short", year: "numeric" })}
+                </span>
+              </div>
+            </div>
+          </div>
+          <button onClick={() => leave(org.id)} disabled={leaving === org.id}
+            style={{ flexShrink: 0, background: "none", border: "1px solid var(--border)", borderRadius: 7, padding: "4px 10px", color: "var(--muted)", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+            {org.member_role === "owner" ? "Delete" : "Leave"}
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ── Audit Tab ─────────────────────────────────────────────────────────────── */
+function AuditTab({ auditLogs }: { auditLogs: AuditLogEntry[] }) {
+  if (auditLogs.length === 0) return (
+    <div style={{ textAlign: "center", padding: "32px 0", color: "var(--muted)", fontSize: 13 }}>
+      <div style={{ fontSize: 28, marginBottom: 8 }}>🔍</div>
+      No audit events recorded yet.
+    </div>
+  );
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 4 }}>Last {auditLogs.length} security events</div>
+      {auditLogs.map((log) => {
+        const isFailure = log.status === "failure" || log.status === "blocked";
+        return (
+          <div key={log.id} style={{
+            display: "flex", alignItems: "flex-start", gap: 10,
+            padding: "10px 12px", background: "var(--surface)", borderRadius: 10,
+            border: `1px solid ${isFailure ? "var(--red-border)" : "var(--border)"}`,
+          }}>
+            <span style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }}>{AUDIT_ACTION_ICONS[log.action] ?? "🔔"}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: isFailure ? "var(--red)" : "var(--text)" }}>
+                  {log.action.replace(/_/g, " ")}
+                </span>
+                <span style={{
+                  fontSize: 10, fontWeight: 700, padding: "1px 7px", borderRadius: 10,
+                  background: log.status === "success" ? "var(--green-dim)" : isFailure ? "var(--red-dim)" : "var(--amber-dim)",
+                  border: `1px solid ${log.status === "success" ? "var(--green-border)" : isFailure ? "var(--red-border)" : "var(--amber-border)"}`,
+                  color: log.status === "success" ? "var(--green)" : isFailure ? "var(--red)" : "var(--amber)",
+                }}>
+                  {log.status}
+                </span>
+              </div>
+              <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
+                {new Date(log.created_at).toLocaleString()} · {log.ip_address ?? "Unknown IP"}
+              </div>
+              {log.resource_type && (
+                <div style={{ fontSize: 11, color: "var(--subtle)", marginTop: 1 }}>
+                  {log.resource_type}{log.resource_id ? ` · ${log.resource_id.slice(0, 8)}…` : ""}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ── MAIN DASHBOARD ─────────────────────────────────────────────────────────── */
 export default function DashboardPage() {
   const { user, logout } = useAuth();
   const [, navigate] = useLocation();
   const [tab, setTab] = useState<Tab>("profile");
 
-  const [profile,   setProfile]   = useState<ProfileData | null>(null);
-  const [apps,      setApps]      = useState<EcosystemApp[]>([]);
-  const [sessions,  setSessions]  = useState<SessionEntry[]>([]);
-  const [devices,   setDevices]   = useState<DeviceEntry[]>([]);
-  const [activity,  setActivity]  = useState<ActivityEntry[]>([]);
-  const [connectedApps] = useState<ConnectedApp[]>([]);
+  const [profile,      setProfile]      = useState<ProfileData | null>(null);
+  const [apps,         setApps]         = useState<EcosystemApp[]>([]);
+  const [sessions,     setSessions]     = useState<SessionEntry[]>([]);
+  const [devices,      setDevices]      = useState<DeviceEntry[]>([]);
+  const [activity,     setActivity]     = useState<ActivityEntry[]>([]);
+  const [organizations, setOrgs]        = useState<OrgEntry[]>([]);
+  const [auditLogs,    setAuditLogs]    = useState<AuditLogEntry[]>([]);
+  const [verification, setVerification] = useState<VerificationStatus | null>(null);
 
-  const loadProfile  = useCallback(() => api.profile().then(setProfile).catch(() => null), []);
-  const loadApps     = useCallback(() => api.appLauncher().then(r => setApps(r.apps)).catch(() => null), []);
-  const loadSessions = useCallback(() => api.sessions().then(setSessions).catch(() => null), []);
-  const loadDevices  = useCallback(() => api.devices().then(setDevices).catch(() => null), []);
-  const loadActivity = useCallback(() => api.activity().then(r => setActivity(r.activity)).catch(() => null), []);
+  const loadProfile      = useCallback(() => api.profile().then(setProfile).catch(() => null), []);
+  const loadApps         = useCallback(() => api.appLauncher().then(r => setApps(r.apps)).catch(() => null), []);
+  const loadSessions     = useCallback(() => api.sessions().then(setSessions).catch(() => null), []);
+  const loadDevices      = useCallback(() => api.devices().then(setDevices).catch(() => null), []);
+  const loadActivity     = useCallback(() => api.activity().then(r => setActivity(r.activity)).catch(() => null), []);
+  const loadOrgs         = useCallback(() => api.organizations().then(r => setOrgs(r.organizations)).catch(() => null), []);
+  const loadAuditLogs    = useCallback(() => api.auditLogs().then(r => setAuditLogs(r.audit_logs)).catch(() => null), []);
+  const loadVerification = useCallback(() => api.verificationStatus().then(setVerification).catch(() => null), []);
 
-  useEffect(() => { void loadProfile(); void loadApps(); }, [loadProfile, loadApps]);
+  useEffect(() => { void loadProfile(); void loadApps(); void loadVerification(); }, [loadProfile, loadApps, loadVerification]);
+
   useEffect(() => {
-    if (tab === "sessions") void loadSessions();
-    if (tab === "devices")  void loadDevices();
-    if (tab === "activity") void loadActivity();
-  }, [tab, loadSessions, loadDevices, loadActivity]);
+    if (tab === "sessions")      void loadSessions();
+    if (tab === "devices")       void loadDevices();
+    if (tab === "activity")      void loadActivity();
+    if (tab === "organizations") void loadOrgs();
+    if (tab === "audit")         void loadAuditLogs();
+    if (tab === "security")      void loadVerification();
+  }, [tab, loadSessions, loadDevices, loadActivity, loadOrgs, loadAuditLogs, loadVerification]);
 
   function handleLogout() { clearToken(); logout(); navigate("/"); }
   function handleRevokeAll() { clearToken(); logout(); navigate("/"); }
 
   const TABS: { id: Tab; label: string; icon: string }[] = [
-    { id: "profile",  label: "Profile",  icon: "👤" },
-    { id: "apps",     label: "Apps",     icon: "🚀" },
-    { id: "sessions", label: "Sessions", icon: "🔑" },
-    { id: "devices",  label: "Devices",  icon: "📱" },
-    { id: "activity", label: "Activity", icon: "📋" },
+    { id: "profile",       label: "Profile",  icon: "👤" },
+    { id: "apps",          label: "Apps",     icon: "🚀" },
+    { id: "sessions",      label: "Sessions", icon: "🔑" },
+    { id: "devices",       label: "Devices",  icon: "📱" },
+    { id: "activity",      label: "Activity", icon: "📋" },
+    { id: "security",      label: "Security", icon: "🛡️" },
+    { id: "organizations", label: "Orgs",     icon: "🏢" },
+    { id: "audit",         label: "Audit",    icon: "🔍" },
   ];
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)" }}>
-      {/* ── Header ──────────────────────────────────────────────────────────── */}
-      <header style={{ borderBottom: "1px solid var(--border)", padding: "14px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--card)", position: "sticky", top: 0, zIndex: 10 }}>
+      {/* ── Header ─────────────────────────────────────────────────────── */}
+      <header style={{
+        borderBottom: "1px solid var(--border)", padding: "14px 24px",
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        background: "var(--card)", position: "sticky", top: 0, zIndex: 10,
+      }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <img src="/rald-logo.png" style={{ width: 28, height: 28, objectFit: "contain" }} alt="RALD" />
           <span style={{ fontWeight: 800, fontSize: 15, letterSpacing: "-0.01em" }}>RALD</span>
-          <span style={{ fontSize: 10, color: "var(--muted)", background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 20, padding: "2px 10px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase" }}>profiles</span>
+          <span style={{ fontSize: 10, color: "var(--muted)", background: "var(--surface)", border: "1px solid var(--border-2)", borderRadius: 20, padding: "2px 10px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+            my account
+          </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <Avatar name={user?.name ?? null} size={28} />
-          <button
-            onClick={handleLogout}
+          <button onClick={handleLogout}
             style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: "6px 14px", color: "var(--muted)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
             Sign out
           </button>
         </div>
       </header>
 
-      <div style={{ maxWidth: 660, margin: "0 auto", padding: "24px 20px 60px" }}>
+      <div style={{ maxWidth: 700, margin: "0 auto", padding: "24px 20px 60px" }}>
 
-        {/* ── User hero ─────────────────────────────────────────────────────── */}
-        <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 18, padding: "20px 22px", marginBottom: 20, display: "flex", alignItems: "center", gap: 16, boxShadow: "0 4px 30px rgba(0,0,0,.3)" }}>
+        {/* ── User hero ────────────────────────────────────────────────── */}
+        <div style={{
+          background: "var(--card)", border: "1px solid var(--border)", borderRadius: 18,
+          padding: "20px 22px", marginBottom: 20,
+          display: "flex", alignItems: "center", gap: 16,
+          boxShadow: "0 4px 30px rgba(0,0,0,.3)",
+        }}>
           <Avatar name={profile?.name ?? user?.name ?? null} size={56} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: "-0.02em" }}>{profile?.name ?? user?.name ?? "RALD User"}</div>
             <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{user?.email}</div>
-            {profile?.rald_id && <div style={{ fontSize: 11, color: "var(--green)", fontWeight: 700, letterSpacing: "0.04em", marginTop: 3 }}>{profile.rald_id}</div>}
+            {profile?.rald_id && (
+              <div style={{ fontSize: 11, color: "var(--green)", fontWeight: 700, letterSpacing: "0.04em", marginTop: 3 }}>{profile.rald_id}</div>
+            )}
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
             <Badge role={user?.role ?? "user"} />
-            {apps.length > 0 && (
-              <div style={{ fontSize: 10, color: "var(--muted)" }}>
-                {apps.filter(a => a.provisioned).length} / {apps.length} apps
+            {verification && (
+              <div style={{ display: "flex", gap: 4 }}>
+                <VerificationPill verified={verification.email_verified} label="Email" />
+                {verification.phone && <VerificationPill verified={verification.phone_verified} label="Phone" />}
               </div>
             )}
           </div>
         </div>
 
-        {/* ── Tabs ──────────────────────────────────────────────────────────── */}
-        <div style={{ display: "flex", gap: 4, marginBottom: 20, background: "var(--surface)", borderRadius: 12, padding: 4, border: "1px solid var(--border)" }}>
+        {/* ── Tabs ─────────────────────────────────────────────────────── */}
+        <div style={{
+          display: "flex", gap: 3, marginBottom: 20, overflowX: "auto",
+          background: "var(--surface)", borderRadius: 12, padding: 4,
+          border: "1px solid var(--border)", scrollbarWidth: "none",
+        }}>
           {TABS.map(t => (
             <button key={t.id} onClick={() => setTab(t.id)}
               style={{
-                flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
-                padding: "8px 4px", borderRadius: 9, border: "none", cursor: "pointer",
+                flex: "0 0 auto", display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
+                padding: "8px 10px", borderRadius: 9, border: "none", cursor: "pointer",
                 background: tab === t.id ? "var(--card)" : "transparent",
                 boxShadow: tab === t.id ? "0 1px 6px rgba(0,0,0,.4)" : "none",
                 color: tab === t.id ? "var(--text)" : "var(--muted)",
-                transition: "all 0.15s",
+                transition: "all 0.15s", minWidth: 58,
               }}>
               <span style={{ fontSize: 16 }}>{t.icon}</span>
-              <span style={{ fontSize: 10, fontWeight: 700 }}>{t.label}</span>
+              <span style={{ fontSize: 10, fontWeight: 700, whiteSpace: "nowrap" }}>{t.label}</span>
             </button>
           ))}
         </div>
 
-        {/* ── Tab content ───────────────────────────────────────────────────── */}
-        {tab === "profile"  && <ProfileTab  profile={profile}  onUpdated={loadProfile} />}
-        {tab === "apps"     && <AppsTab     apps={apps}        onLaunch={() => void loadApps()} />}
-        {tab === "sessions" && <SessionsTab sessions={sessions} onRevokeAll={handleRevokeAll} />}
-        {tab === "devices"  && <DevicesTab  devices={devices} />}
-        {tab === "activity" && <ActivityTab activity={activity} />}
+        {/* ── Tab content ──────────────────────────────────────────────── */}
+        {tab === "profile"       && <ProfileTab       profile={profile} verification={verification} onUpdated={loadProfile} />}
+        {tab === "apps"          && <AppsTab          apps={apps} onLaunch={() => void loadApps()} />}
+        {tab === "sessions"      && <SessionsTab      sessions={sessions} onRevokeAll={handleRevokeAll} />}
+        {tab === "devices"       && <DevicesTab       devices={devices} />}
+        {tab === "activity"      && <ActivityTab      activity={activity} />}
+        {tab === "security"      && <SecurityTab      verification={verification} userEmail={user?.email ?? ""} onSignOut={handleRevokeAll} />}
+        {tab === "organizations" && <OrganizationsTab organizations={organizations} onRefresh={loadOrgs} />}
+        {tab === "audit"         && <AuditTab         auditLogs={auditLogs} />}
       </div>
     </div>
   );
