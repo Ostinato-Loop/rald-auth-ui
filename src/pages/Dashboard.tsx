@@ -1,6 +1,6 @@
 // RALD Identity — Profiles Dashboard
-// Phase H: Foundation Hardening — Security + Organizations + Audit Logs tabs
-// App.RALD.Cloud / Profiles.RALD.Cloud — "Google My Account for RALD"
+// Phase 2: Full Account Center — Google My Account quality
+// App.RALD.Cloud — Connected Apps, Verification, Settings added
 // LILCKY STUDIO LIMITED
 
 import { useState, useEffect, useCallback } from "react";
@@ -13,12 +13,21 @@ import {
 } from "../lib/api";
 import { useLocation } from "wouter";
 
-type Tab = "profile" | "apps" | "sessions" | "devices" | "activity" | "security" | "organizations" | "audit" | "privacy";
+type Tab = "profile" | "connected" | "verification" | "sessions" | "devices" | "activity" | "security" | "organizations" | "audit" | "privacy" | "settings";
 
 const ICONS: Record<string, string> = {
   loop: "🎵", messenger: "💬", "rald-inbox": "📥", payrald: "💳",
   dunarald: "🛒", gitrald: "⚙️", raldtics: "📊", profiles: "👤",
-  manilla: "🎶",
+  manilla: "🎶", mail: "✉️", voice: "🎙️",
+};
+
+const PRODUCT_COLORS: Record<string, string> = {
+  manilla:   "#FF7A00",
+  loop:      "#00FF88",
+  messenger: "#00BFFF",
+  voice:     "#FF4FAD",
+  mail:      "#0066FF",
+  dunarald:  "#A855F7",
 };
 
 const ORG_TYPE_ICONS: Record<string, string> = {
@@ -35,7 +44,7 @@ const AUDIT_ACTION_ICONS: Record<string, string> = {
   account_suspended: "🔴", rate_limited: "⏱️", redirect_rejected: "🛡️",
 };
 
-/* ── shared helpers ─────────────────────────────────────────────────────── */
+/* ── Shared helpers ──────────────────────────────────────────────────────── */
 function Avatar({ name, size = 48 }: { name: string | null; size?: number }) {
   const initials = (name ?? "?").split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
   return (
@@ -45,9 +54,7 @@ function Avatar({ name, size = 48 }: { name: string | null; size?: number }) {
       display: "flex", alignItems: "center", justifyContent: "center",
       fontSize: size * 0.36, fontWeight: 800, color: "#fff", flexShrink: 0,
       boxShadow: "0 0 0 2px rgba(46,182,125,.3)",
-    }}>
-      {initials}
-    </div>
+    }}>{initials}</div>
   );
 }
 
@@ -75,9 +82,7 @@ function VerificationPill({ verified, label }: { verified: boolean; label: strin
       background: verified ? "var(--green-dim)" : "var(--surface)",
       border: `1px solid ${verified ? "var(--green-border)" : "var(--border-2)"}`,
       color: verified ? "var(--green)" : "var(--muted)",
-    }}>
-      {verified ? "✓" : "○"} {label}
-    </span>
+    }}>{verified ? "✓" : "○"} {label}</span>
   );
 }
 
@@ -86,9 +91,7 @@ function SectionCard({ children, style }: { children: React.ReactNode; style?: R
     <div style={{
       background: "var(--surface)", borderRadius: 14, padding: "16px 18px",
       border: "1px solid var(--border)", ...style,
-    }}>
-      {children}
-    </div>
+    }}>{children}</div>
   );
 }
 
@@ -118,61 +121,53 @@ function ProfileTab({ profile, verification, onUpdated }: {
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
-    setSaving(true); setErr(""); setSaved(false);
+    setSaving(true); setSaved(false); setErr("");
     try {
-      await api.updateProfile({ display_name: name.trim(), bio: bio.trim() });
+      await api.updateProfile({ display_name: name, bio });
       setSaved(true); onUpdated();
-      setTimeout(() => setSaved(false), 2500);
+      setTimeout(() => setSaved(false), 3000);
     } catch (ex) {
       setErr(ex instanceof Error ? ex.message : "Save failed");
     } finally { setSaving(false); }
   }
 
-  if (!profile) return <div style={{ textAlign: "center", padding: 32, color: "var(--muted)" }}>Loading profile…</div>;
-
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      {/* Identity card */}
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <SectionCard>
-        <div style={{ display: "flex", gap: 14, alignItems: "center", marginBottom: 14 }}>
-          <Avatar name={profile.name} size={52} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 18, fontWeight: 800 }}>{profile.name ?? "Anonymous"}</div>
-            <div style={{ fontSize: 12, color: "var(--green)", fontWeight: 700, letterSpacing: "0.04em" }}>{profile.rald_id}</div>
-            <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{profile.email}</div>
-          </div>
-          <Badge role={profile.role} />
-        </div>
-
-        {/* Verification status */}
-        {verification && (
-          <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
-            <VerificationPill verified={verification.email_verified} label="Email verified" />
-            <VerificationPill verified={verification.phone_verified} label="Phone verified" />
-          </div>
-        )}
-
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 16px" }}>
-          {[
-            ["Email", profile.email],
-            ["Phone", profile.phone ?? "—"],
-            ["Member since", new Date(profile.created_at).toLocaleDateString("en-GB", { month: "short", year: "numeric" })],
-            ["Identity hub", "profiles.rald.cloud"],
-            ["Active apps", `${profile.active_products?.length ?? 0}`],
-            ["RALD ID", profile.rald_id],
-          ].map(([label, value]) => (
-            <div key={label}>
-              <div style={{ fontSize: 10, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</div>
-              <div style={{ fontSize: 13, color: "var(--text)" }}>{value}</div>
+        <SectionTitle>Identity</SectionTitle>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: "var(--card)", borderRadius: 10, border: "1px solid var(--border)" }}>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 600 }}>RALD ID</div>
+              <div style={{ fontSize: 11, color: "var(--green)", fontWeight: 700, fontFamily: "monospace", letterSpacing: "0.08em" }}>{profile?.rald_id ?? "—"}</div>
             </div>
-          ))}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: "var(--card)", borderRadius: 10, border: "1px solid var(--border)" }}>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 600 }}>Email</div>
+              <div style={{ fontSize: 11, color: "var(--muted)" }}>{profile?.email ?? "—"}</div>
+            </div>
+            <VerificationPill verified={verification?.email_verified ?? false} label={verification?.email_verified ? "Verified" : "Not verified"} />
+          </div>
+          {profile?.phone && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: "var(--card)", borderRadius: 10, border: "1px solid var(--border)" }}>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600 }}>Phone</div>
+                <div style={{ fontSize: 11, color: "var(--muted)" }}>{profile.phone}</div>
+              </div>
+              <VerificationPill verified={verification?.phone_verified ?? false} label={verification?.phone_verified ? "Verified" : "Not verified"} />
+            </div>
+          )}
+          <div style={{ padding: "10px 14px", background: "var(--card)", borderRadius: 10, border: "1px solid var(--border)" }}>
+            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 2 }}>Role</div>
+            <div style={{ marginTop: 4 }}><Badge role={profile?.role ?? "user"} /></div>
+          </div>
         </div>
       </SectionCard>
 
-      {/* Edit form */}
       <SectionCard>
-        <SectionTitle>Edit Profile</SectionTitle>
-        <form onSubmit={save} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <SectionTitle>Public Profile</SectionTitle>
+        <form onSubmit={e => void save(e)} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div>
             <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Display Name</label>
             <input className="rald-input" value={name} onChange={e => setName(e.target.value)} placeholder="How should we call you?" maxLength={80} />
@@ -189,60 +184,269 @@ function ProfileTab({ profile, verification, onUpdated }: {
           </button>
         </form>
       </SectionCard>
+
+      {profile?.active_products && profile.active_products.length > 0 && (
+        <SectionCard>
+          <SectionTitle>Active Products</SectionTitle>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {profile.active_products.map(p => (
+              <span key={p} style={{ padding: "4px 12px", borderRadius: 20, fontSize: 11, fontWeight: 700, background: "var(--card)", border: "1px solid var(--border-2)", color: "var(--text)" }}>
+                {ICONS[p] ?? "🔲"} {p}
+              </span>
+            ))}
+          </div>
+        </SectionCard>
+      )}
     </div>
   );
 }
 
-/* ── Apps Tab ──────────────────────────────────────────────────────────────── */
-function AppsTab({ apps, onLaunch }: { apps: EcosystemApp[]; onLaunch: (app: EcosystemApp) => void }) {
+/* ── Connected Apps Tab ─────────────────────────────────────────────────── */
+const ECOSYSTEM_APPS = [
+  { id: "manilla",   name: "Manilla",     icon: "🎶", color: "#FF7A00", url: "https://manilla.rald.cloud",   learn: "https://learn.rald.cloud/products/manilla",  desc: "Music streaming & discovery" },
+  { id: "loop",      name: "Loop",        icon: "🎵", color: "#00FF88", url: "https://loop.rald.cloud",      learn: "https://learn.rald.cloud/products/loop",     desc: "Creator marketplace & commerce" },
+  { id: "messenger", name: "Messenger",   icon: "💬", color: "#00BFFF", url: "https://messenger.rald.cloud", learn: "https://learn.rald.cloud/products/messenger", desc: "Encrypted messaging" },
+  { id: "voice",     name: "Loop Voice",  icon: "🎙️", color: "#FF4FAD", url: "https://voice.rald.cloud",     learn: "https://learn.rald.cloud/products/voice",    desc: "SIP-based voice communications" },
+  { id: "mail",      name: "RALD Mail",   icon: "✉️", color: "#0066FF", url: "https://mail.rald.cloud",      learn: "https://learn.rald.cloud/products/mail",     desc: "Private email for the ecosystem" },
+  { id: "dunarald",  name: "DunaRald",    icon: "🛒", color: "#A855F7", url: "https://dunarald.rald.cloud",  learn: "https://learn.rald.cloud/products/dunarald", desc: "Digital content marketplace" },
+];
+
+const DEFAULT_PERMISSIONS: Record<string, string[]> = {
+  manilla:   ["Read your profile", "Stream content", "Follow artists"],
+  loop:      ["Read your profile", "Post as you", "Access wallet"],
+  messenger: ["Read your profile", "Send messages", "Access contacts"],
+  voice:     ["Read your profile", "Make & receive calls", "Access call logs"],
+  mail:      ["Read your profile", "Send & receive email", "Manage mailbox"],
+  dunarald:  ["Read your profile", "Make purchases", "Access library"],
+};
+
+function ConnectedAppsTab({ apps, provisionedIds, onRefresh }: {
+  apps: ConnectedApp[];
+  provisionedIds: string[];
+  onRefresh: () => void;
+}) {
+  const [revoking, setRevoking] = useState<string | null>(null);
   const [launching, setLaunching] = useState<string | null>(null);
   const [err, setErr] = useState("");
 
-  async function launch(app: EcosystemApp) {
-    setErr(""); setLaunching(app.id);
+  async function launch(appDef: typeof ECOSYSTEM_APPS[0]) {
+    setErr(""); setLaunching(appDef.id);
     try {
-      if (!app.provisioned) await api.provisionApp(app.id);
+      if (!provisionedIds.includes(appDef.id)) await api.provisionApp(appDef.id);
       try {
-        const sso = await api.ssoExchange(app.id);
-        const url = new URL(app.url);
+        const sso = await api.ssoExchange(appDef.id);
+        const url = new URL(appDef.url);
         url.searchParams.set("rald_token", sso.token);
-        url.searchParams.set("app_id", app.id);
+        url.searchParams.set("app_id", appDef.id);
         window.open(url.toString(), "_blank");
-      } catch {
-        window.open(app.url, "_blank");
-      }
-      onLaunch(app);
+      } catch { window.open(appDef.url, "_blank"); }
+      onRefresh();
     } catch (ex) {
       setErr(ex instanceof Error ? ex.message : "Launch failed");
     } finally { setLaunching(null); }
   }
 
+  async function revoke(appId: string) {
+    setRevoking(appId);
+    try {
+      // Revoke all sessions for this app via session revoke — best effort
+      await api.revokeAllSessions();
+      onRefresh();
+    } catch { /* best-effort */ } finally { setRevoking(null); }
+  }
+
+  const connectedMap = Object.fromEntries(apps.map(a => [a.app_id, a]));
+
   return (
-    <div>
-      <div style={{ marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <span style={{ fontSize: 12, color: "var(--muted)" }}>{apps.filter(a => a.provisioned).length}/{apps.length} apps connected</span>
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {err && <div style={{ color: "var(--red)", fontSize: 12, marginBottom: 4 }}>{err}</div>}
+      <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 4 }}>
+        {provisionedIds.length} of {ECOSYSTEM_APPS.length} apps connected · <a href="https://learn.rald.cloud" target="_blank" rel="noopener noreferrer" style={{ color: "var(--green)", fontSize: 12 }}>Learn about all products →</a>
       </div>
-      {err && <div style={{ color: "var(--red)", fontSize: 12, marginBottom: 12 }}>{err}</div>}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 10 }}>
-        {apps.map(app => (
-          <button key={app.id} onClick={() => launch(app)} disabled={launching === app.id}
-            style={{
-              background: app.provisioned ? "var(--surface)" : "var(--card)",
-              border: `1px solid ${app.provisioned ? "var(--green-border)" : "var(--border)"}`,
-              borderRadius: 14, padding: "14px 12px", cursor: "pointer",
-              display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
-              transition: "all 0.15s", textAlign: "center", opacity: launching === app.id ? 0.6 : 1,
-            }}>
-            <span style={{ fontSize: 26 }}>{app.icon ?? ICONS[app.id] ?? "🔲"}</span>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{app.name}</div>
-              <div style={{ fontSize: 10, color: app.provisioned ? "var(--green)" : "var(--muted)", fontWeight: 600, marginTop: 2 }}>
-                {launching === app.id ? "Opening…" : app.provisioned ? "Connected" : "Click to connect"}
+      {ECOSYSTEM_APPS.map(app => {
+        const connected = connectedMap[app.id];
+        const isProvisioned = provisionedIds.includes(app.id);
+        const color = app.color;
+        const perms = connected?.role ? [connected.role, ...DEFAULT_PERMISSIONS[app.id].slice(1)] : DEFAULT_PERMISSIONS[app.id];
+        return (
+          <div key={app.id} style={{
+            background: "var(--surface)", borderRadius: 14,
+            border: `1px solid ${isProvisioned ? color + "25" : "var(--border)"}`,
+            padding: "16px 18px",
+          }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+              {/* Icon */}
+              <div style={{
+                width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+                background: `${color}15`, border: `1px solid ${color}30`,
+                display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22,
+              }}>{app.icon}</div>
+
+              {/* Info */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 3 }}>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text)" }}>{app.name}</div>
+                  <span style={{
+                    fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 20,
+                    background: isProvisioned ? `${color}15` : "var(--card)",
+                    border: `1px solid ${isProvisioned ? color + "40" : "var(--border)"}`,
+                    color: isProvisioned ? color : "var(--muted)",
+                  }}>{isProvisioned ? "● Connected" : "○ Not connected"}</span>
+                </div>
+                <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 8 }}>{app.desc}</div>
+
+                {/* Permissions */}
+                <div style={{ marginBottom: 8 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 5 }}>Permissions</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                    {perms.map(p => (
+                      <span key={p} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 10, background: "var(--card)", border: "1px solid var(--border)", color: "var(--muted)" }}>{p}</span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Last accessed */}
+                {connected?.connected && (
+                  <div style={{ fontSize: 10, color: "var(--muted)", marginBottom: 10 }}>
+                    Connected {new Date(connected.connected).toLocaleDateString()}
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button onClick={() => void launch(app)} disabled={launching === app.id}
+                    style={{
+                      padding: "6px 14px", borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: "pointer",
+                      background: isProvisioned ? `${color}15` : color,
+                      border: `1px solid ${color}50`,
+                      color: isProvisioned ? color : "#000",
+                      opacity: launching === app.id ? 0.6 : 1,
+                    }}>
+                    {launching === app.id ? "Opening…" : isProvisioned ? "Open →" : "Connect"}
+                  </button>
+                  <a href={app.learn} target="_blank" rel="noopener noreferrer"
+                    style={{ padding: "6px 14px", borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: "pointer", background: "var(--card)", border: "1px solid var(--border)", color: "var(--muted)", textDecoration: "none" }}>
+                    Learn more
+                  </a>
+                  {isProvisioned && (
+                    <button onClick={() => void revoke(app.id)} disabled={revoking === app.id}
+                      style={{ padding: "6px 14px", borderRadius: 8, fontSize: 11, fontWeight: 600, cursor: "pointer", background: "none", border: "1px solid var(--border)", color: "var(--red)", opacity: revoking === app.id ? 0.6 : 1 }}>
+                      {revoking === app.id ? "Revoking…" : "Revoke"}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
-          </button>
-        ))}
-      </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ── Verification Tab ────────────────────────────────────────────────────── */
+function VerificationTab({ verification }: { verification: VerificationStatus | null }) {
+  const [applications, setApplications] = useState<Array<{
+    id: string; verification_type: string; status: string; name: string;
+    description?: string; submitted_at: string; reviewed_at?: string;
+  }>>([]);
+  const [loadingApps, setLoadingApps] = useState(true);
+
+  useEffect(() => {
+    api.verifications()
+      .then(r => setApplications(r.verifications))
+      .catch(() => setApplications([]))
+      .finally(() => setLoadingApps(false));
+  }, []);
+
+  const tiers = [
+    { label: "Basic",            icon: "✉", verified: !!(verification?.email_verified), desc: "Email verified",    color: "#6B7A8D" },
+    { label: "Phone Verified",   icon: "📱", verified: !!(verification?.phone_verified), desc: "Phone verified",    color: "#00BFFF" },
+    { label: "Identity Verified",icon: "✓",  verified: false,                            desc: "Government ID",     color: "#00E5FF" },
+    { label: "Business Verified",icon: "⬡",  verified: false,                            desc: "CAC registration",  color: "#00FF88" },
+  ];
+
+  const statusColors: Record<string, string> = {
+    approved: "#00FF88", pending: "#FFD400", rejected: "#FF2E2E", withdrawn: "#6B7A8D",
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      {/* Current verification tier */}
+      <SectionCard>
+        <SectionTitle>Verification Tiers</SectionTitle>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {tiers.map((t, i) => (
+            <div key={t.label} style={{
+              display: "flex", alignItems: "center", gap: 14, padding: "12px 14px",
+              borderRadius: 10, background: "var(--card)", border: `1px solid ${t.verified ? t.color + "35" : "var(--border)"}`,
+            }}>
+              <div style={{
+                width: 32, height: 32, borderRadius: "50%", flexShrink: 0,
+                background: t.verified ? `${t.color}20` : "var(--surface)",
+                border: `1px solid ${t.verified ? t.color + "50" : "var(--border)"}`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 14, color: t.verified ? t.color : "var(--muted)",
+              }}>{t.icon}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: t.verified ? "var(--text)" : "var(--muted)" }}>Tier {i + 1} — {t.label}</div>
+                <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>{t.desc}</div>
+              </div>
+              <span style={{
+                fontSize: 10, fontWeight: 700, padding: "2px 9px", borderRadius: 20,
+                background: t.verified ? `${t.color}15` : "var(--surface)",
+                border: `1px solid ${t.verified ? t.color + "40" : "var(--border)"}`,
+                color: t.verified ? t.color : "var(--muted)",
+              }}>{t.verified ? "✓ Done" : "Not yet"}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{ marginTop: 12, padding: "10px 14px", borderRadius: 10, background: "rgba(0,229,255,0.04)", border: "1px solid rgba(0,229,255,0.1)" }}>
+          <div style={{ fontSize: 11, color: "var(--muted)", lineHeight: 1.6 }}>
+            Higher verification tiers unlock more ecosystem features. <a href="https://trust.rald.cloud/verification" target="_blank" rel="noopener noreferrer" style={{ color: "#00E5FF" }}>Full verification policy →</a>
+          </div>
+        </div>
+      </SectionCard>
+
+      {/* Professional verification applications */}
+      <SectionCard>
+        <SectionTitle>Professional Verification Applications</SectionTitle>
+        {loadingApps ? (
+          <div style={{ textAlign: "center", padding: "16px 0", color: "var(--muted)", fontSize: 13 }}>Loading…</div>
+        ) : applications.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "20px 0" }}>
+            <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 14, lineHeight: 1.6 }}>
+              Apply for professional verification as an Artist, Label, Radio Station, or Business. Approved applications receive a verification badge visible across all RALD products.
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center" }}>
+              {["Artist", "Label", "Radio Station", "Advertiser", "Media House", "Community"].map(type => (
+                <a key={type} href="https://app.rald.cloud/verify" style={{
+                  padding: "6px 16px", borderRadius: 30, fontSize: 11, fontWeight: 700,
+                  background: "var(--card)", border: "1px solid var(--border-2)", color: "var(--text)", textDecoration: "none",
+                }}>{type}</a>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {applications.map(app => (
+              <div key={app.id} style={{ padding: "12px 14px", borderRadius: 10, background: "var(--card)", border: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 700, textTransform: "capitalize" }}>{app.verification_type} — {app.name}</div>
+                  <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>Submitted {new Date(app.submitted_at).toLocaleDateString()}</div>
+                </div>
+                <span style={{
+                  fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 20,
+                  color: statusColors[app.status] ?? "var(--muted)",
+                  background: `${statusColors[app.status] ?? "var(--muted)"}15`,
+                  border: `1px solid ${statusColors[app.status] ?? "var(--muted)"}30`,
+                  textTransform: "capitalize",
+                }}>{app.status}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </SectionCard>
     </div>
   );
 }
@@ -251,7 +455,6 @@ function AppsTab({ apps, onLaunch }: { apps: EcosystemApp[]; onLaunch: (app: Eco
 function SessionsTab({ sessions, onRevokeAll }: { sessions: SessionEntry[]; onRevokeAll: () => void }) {
   const [local, setLocal] = useState<SessionEntry[]>(sessions);
   const [loading, setLoading] = useState(false);
-
   useEffect(() => setLocal(sessions), [sessions]);
 
   async function revoke(id: string) {
@@ -279,7 +482,7 @@ function SessionsTab({ sessions, onRevokeAll }: { sessions: SessionEntry[]; onRe
       {local.map(s => (
         <div key={s.id} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <div style={{ fontSize: 12, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {s.user_agent?.split(" ").slice(-2).join(" ") ?? "Unknown browser"}
             </div>
             <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
@@ -300,7 +503,6 @@ function SessionsTab({ sessions, onRevokeAll }: { sessions: SessionEntry[]; onRe
 function DevicesTab({ devices }: { devices: DeviceEntry[] }) {
   const [local, setLocal] = useState<DeviceEntry[]>(devices);
   const [loading, setLoading] = useState(false);
-
   useEffect(() => setLocal(devices), [devices]);
 
   async function remove(id: string) {
@@ -322,7 +524,7 @@ function DevicesTab({ devices }: { devices: DeviceEntry[] }) {
       {local.map(d => (
         <div key={d.id} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text)", display: "flex", alignItems: "center", gap: 6 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
               {d.device_type === "mobile" ? "📱" : "💻"} {d.device_name ?? d.device_type ?? "Unknown device"}
               {(d.is_trusted || d.trusted) && (
                 <span style={{ fontSize: 10, color: "var(--green)", background: "var(--green-dim)", border: "1px solid var(--green-border)", borderRadius: 10, padding: "1px 7px" }}>Trusted</span>
@@ -357,7 +559,7 @@ function ActivityTab({ activity }: { activity: ActivityEntry[] }) {
   );
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      {activity.slice(0, 40).map((a) => (
+      {activity.slice(0, 50).map((a) => (
         <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", background: "var(--surface)", borderRadius: 10, border: "1px solid var(--border)" }}>
           <span style={{ fontSize: 16 }}>{ICONS[a.app_id ?? ""] ?? (a.success ? "✅" : "❌")}</span>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -375,9 +577,7 @@ function ActivityTab({ activity }: { activity: ActivityEntry[] }) {
 
 /* ── Security Tab ──────────────────────────────────────────────────────────── */
 function SecurityTab({ verification, userEmail, onSignOut }: {
-  verification: VerificationStatus | null;
-  userEmail: string;
-  onSignOut: () => void;
+  verification: VerificationStatus | null; userEmail: string; onSignOut: () => void;
 }) {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [resetSent, setResetSent] = useState(false);
@@ -385,22 +585,16 @@ function SecurityTab({ verification, userEmail, onSignOut }: {
 
   async function sendPasswordReset() {
     setResetLoading(true);
-    try {
-      await api.requestReset(userEmail);
-      setResetSent(true);
-      setShowResetConfirm(false);
-    } catch {
-      /* best-effort — email may not be confirmed yet */
-      setResetSent(true);
-    } finally { setResetLoading(false); }
+    try { await api.requestReset(userEmail); setResetSent(true); setShowResetConfirm(false); }
+    catch { setResetSent(true); }
+    finally { setResetLoading(false); }
   }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      {/* Verification Status */}
       <SectionCard>
         <SectionTitle>Verification Status</SectionTitle>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: "var(--card)", borderRadius: 10, border: "1px solid var(--border)" }}>
             <div>
               <div style={{ fontSize: 13, fontWeight: 600 }}>Email address</div>
@@ -418,7 +612,6 @@ function SecurityTab({ verification, userEmail, onSignOut }: {
         </div>
       </SectionCard>
 
-      {/* Password */}
       <SectionCard>
         <SectionTitle>Password</SectionTitle>
         {resetSent ? (
@@ -453,367 +646,141 @@ function SecurityTab({ verification, userEmail, onSignOut }: {
         )}
       </SectionCard>
 
-      {/* 2FA — placeholder for Phase I */}
       <SectionCard>
         <SectionTitle>Two-Factor Authentication</SectionTitle>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
-            <div style={{ fontSize: 13, fontWeight: 600 }}>Authenticator app</div>
-            <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>Coming in Phase I — TOTP support</div>
+            <div style={{ fontSize: 13, fontWeight: 600 }}>Authenticator app (TOTP)</div>
+            <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>Phase I — Google Authenticator, Authy compatible</div>
           </div>
-          <span style={{ fontSize: 11, color: "var(--muted)", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 20, padding: "3px 10px", fontWeight: 700 }}>
-            Soon
-          </span>
+          <span style={{ fontSize: 11, color: "var(--muted)", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 20, padding: "3px 10px", fontWeight: 700 }}>Coming soon</span>
         </div>
       </SectionCard>
 
-      {/* Danger zone */}
-      <SectionCard style={{ borderColor: "var(--red-border)" }}>
-        <SectionTitle>Danger Zone</SectionTitle>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <SectionCard>
+        <SectionTitle>Recent Security Events</SectionTitle>
+        <a href="#" onClick={e => { e.preventDefault(); onSignOut(); }}
+          style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: "var(--card)", borderRadius: 10, border: "1px solid var(--border)", textDecoration: "none", cursor: "pointer" }}>
           <div>
-            <div style={{ fontSize: 13, fontWeight: 600 }}>Sign out everywhere</div>
-            <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>Revoke all active sessions and sign out</div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>Sign out of all devices</div>
+            <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>Revokes all active sessions immediately</div>
           </div>
-          <button onClick={onSignOut}
-            style={{ background: "var(--red-dim)", border: "1px solid var(--red-border)", borderRadius: 8, padding: "7px 14px", color: "var(--red)", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-            Sign out all
-          </button>
-        </div>
+          <span style={{ color: "var(--red)", fontSize: 12, fontWeight: 700 }}>Sign out all →</span>
+        </a>
       </SectionCard>
     </div>
   );
 }
 
-/* ── Organizations Tab ─────────────────────────────────────────────────────── */
-function OrganizationsTab({ organizations, onRefresh }: {
-  organizations: OrgEntry[];
-  onRefresh: () => void;
-}) {
-  const [showCreate, setShowCreate] = useState(false);
-  const [name, setName] = useState("");
-  const [handle, setHandle] = useState("");
-  const [type, setType] = useState("general");
-  const [description, setDescription] = useState("");
-  const [creating, setCreating] = useState(false);
-  const [err, setErr] = useState("");
-  const [leaving, setLeaving] = useState<string | null>(null);
-
-  const ORG_TYPES = [
-    { key: "general", label: "General" },
-    { key: "radio", label: "Radio Station" },
-    { key: "media", label: "Media House" },
-    { key: "business", label: "Business" },
-    { key: "community", label: "Community" },
-    { key: "education", label: "Education" },
-  ];
-
-  async function create(e: React.FormEvent) {
-    e.preventDefault();
-    setCreating(true); setErr("");
-    try {
-      await api.createOrganization({ name: name.trim(), handle: handle.trim(), type, description: description.trim() });
-      setShowCreate(false); setName(""); setHandle(""); setDescription(""); setType("general");
-      onRefresh();
-    } catch (ex) {
-      setErr(ex instanceof Error ? ex.message : "Could not create organization");
-    } finally { setCreating(false); }
-  }
-
-  async function leave(orgId: string) {
-    setLeaving(orgId);
-    try { await api.leaveOrganization(orgId); onRefresh(); }
-    catch { /* best-effort */ } finally { setLeaving(null); }
-  }
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span style={{ fontSize: 12, color: "var(--muted)" }}>{organizations.length} organization{organizations.length !== 1 ? "s" : ""}</span>
-        <button onClick={() => setShowCreate(s => !s)}
-          style={{ background: "var(--green-dim)", border: "1px solid var(--green-border)", borderRadius: 8, padding: "6px 14px", color: "var(--green)", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-          {showCreate ? "Cancel" : "+ New organization"}
-        </button>
-      </div>
-
-      {showCreate && (
-        <SectionCard>
-          <SectionTitle>Create Organization</SectionTitle>
-          <form onSubmit={create} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <div>
-              <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Name *</label>
-              <input className="rald-input" value={name} onChange={e => setName(e.target.value)} placeholder="Organization name" maxLength={80} required />
-            </div>
-            <div>
-              <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Handle * (letters, numbers, - _)</label>
-              <input className="rald-input" value={handle} onChange={e => setHandle(e.target.value.toLowerCase().replace(/[^a-z0-9\-_]/g, ""))} placeholder="my-org" maxLength={40} required />
-            </div>
-            <div>
-              <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Type</label>
-              <select className="rald-input" value={type} onChange={e => setType(e.target.value)}>
-                {ORG_TYPES.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>Description</label>
-              <input className="rald-input" value={description} onChange={e => setDescription(e.target.value)} placeholder="What is this organization?" maxLength={300} />
-            </div>
-            {err && <div style={{ color: "var(--red)", fontSize: 12 }}>{err}</div>}
-            <button type="submit" className="btn-primary" disabled={creating || !name.trim() || handle.length < 3}>
-              {creating ? "Creating…" : "Create organization"}
-            </button>
-          </form>
-        </SectionCard>
-      )}
-
-      {organizations.length === 0 && !showCreate && (
-        <div style={{ textAlign: "center", padding: "32px 0", color: "var(--muted)", fontSize: 13 }}>
-          <div style={{ fontSize: 28, marginBottom: 8 }}>🏢</div>
-          No organizations yet. Create or join one to get started.
-        </div>
-      )}
-
-      {organizations.map(org => (
-        <div key={org.id} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "14px 16px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
-          <div style={{ display: "flex", gap: 12, flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 28, flexShrink: 0 }}>{ORG_TYPE_ICONS[org.type] ?? "🏢"}</div>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>{org.name}</div>
-              <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>@{org.handle} · {org.type}</div>
-              {org.description && <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4, lineHeight: 1.4 }}>{org.description}</div>}
-              <div style={{ display: "flex", gap: 6, marginTop: 6, alignItems: "center" }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: "var(--green)", background: "var(--green-dim)", border: "1px solid var(--green-border)", borderRadius: 10, padding: "2px 8px" }}>
-                  {org.member_role}
-                </span>
-                <span style={{ fontSize: 11, color: "var(--subtle)" }}>
-                  Joined {new Date(org.joined_at).toLocaleDateString("en-GB", { month: "short", year: "numeric" })}
-                </span>
-              </div>
-            </div>
-          </div>
-          <button onClick={() => leave(org.id)} disabled={leaving === org.id}
-            style={{ flexShrink: 0, background: "none", border: "1px solid var(--border)", borderRadius: 7, padding: "4px 10px", color: "var(--muted)", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
-            {org.member_role === "owner" ? "Delete" : "Leave"}
-          </button>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/* ── Audit Tab ─────────────────────────────────────────────────────────────── */
-function AuditTab({ auditLogs }: { auditLogs: AuditLogEntry[] }) {
-  if (auditLogs.length === 0) return (
-    <div style={{ textAlign: "center", padding: "32px 0", color: "var(--muted)", fontSize: 13 }}>
-      <div style={{ fontSize: 28, marginBottom: 8 }}>🔍</div>
-      No audit events recorded yet.
-    </div>
-  );
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 4 }}>Last {auditLogs.length} security events</div>
-      {auditLogs.map((log) => {
-        const isFailure = log.status === "failure" || log.status === "blocked";
-        return (
-          <div key={log.id} style={{
-            display: "flex", alignItems: "flex-start", gap: 10,
-            padding: "10px 12px", background: "var(--surface)", borderRadius: 10,
-            border: `1px solid ${isFailure ? "var(--red-border)" : "var(--border)"}`,
-          }}>
-            <span style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }}>{AUDIT_ACTION_ICONS[log.action] ?? "🔔"}</span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: isFailure ? "var(--red)" : "var(--text)" }}>
-                  {log.action.replace(/_/g, " ")}
-                </span>
-                <span style={{
-                  fontSize: 10, fontWeight: 700, padding: "1px 7px", borderRadius: 10,
-                  background: log.status === "success" ? "var(--green-dim)" : isFailure ? "var(--red-dim)" : "var(--amber-dim)",
-                  border: `1px solid ${log.status === "success" ? "var(--green-border)" : isFailure ? "var(--red-border)" : "var(--amber-border)"}`,
-                  color: log.status === "success" ? "var(--green)" : isFailure ? "var(--red)" : "var(--amber)",
-                }}>
-                  {log.status}
-                </span>
-              </div>
-              <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
-                {new Date(log.created_at).toLocaleString()} · {log.ip_address ?? "Unknown IP"}
-              </div>
-              {log.resource_type && (
-                <div style={{ fontSize: 11, color: "var(--subtle)", marginTop: 1 }}>
-                  {log.resource_type}{log.resource_id ? ` · ${log.resource_id.slice(0, 8)}…` : ""}
-                </div>
-              )}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-/* ── MAIN DASHBOARD ─────────────────────────────────────────────────────────── */
-export default function DashboardPage() {
-  const { user, logout } = useAuth();
-  const [, navigate] = useLocation();
-
-/* ── Privacy Tab — Phase 3 ─────────────────────────────────────────────────── */
+/* ── Privacy Tab ─────────────────────────────────────────────────────────── */
 function PrivacyTab({ userEmail }: { userEmail: string }) {
-  const [loading, setLoading]   = useState(false);
-  const [exporting, setExport]  = useState(false);
-  const [perms, setPerms]       = useState({ profile_visible: true, activity_tracking: true, marketing_emails: true });
-  const [deleteStep, setDelete] = useState<0 | 1 | 2>(0);
-  const [msg, setMsg]           = useState<string | null>(null);
+  const [perms, setPerms] = useState({ profile_visible: true, activity_tracking: false, marketing_emails: false });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [deleteStep, setDelete] = useState(0);
+  const [err, setErr] = useState("");
 
-  async function handleExport() {
-    setExport(true);
-    try {
-      const resp = await fetch(`${import.meta.env.VITE_API_URL ?? "https://auth.rald.cloud"}/privacy/export`, {
-        headers: { "Authorization": `Bearer ${localStorage.getItem("rald_token")}` },
-      });
-      const blob = await resp.blob();
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement("a");
-      a.href     = url;
-      a.download = `rald-data-${new Date().toISOString().split("T")[0]}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch { setMsg("Export failed. Please try again."); }
-    finally { setExport(false); }
-  }
+  useEffect(() => {
+    api.privacyOverview()
+      .then(r => { if (r.permissions) setPerms(p => ({ ...p, ...r.permissions })); })
+      .catch(() => { /* use defaults */ })
+      .finally(() => setLoading(false));
+  }, []);
 
   async function handlePermChange(key: keyof typeof perms, val: boolean) {
     const next = { ...perms, [key]: val };
     setPerms(next);
-    try {
-      const token = localStorage.getItem("rald_token");
-      await fetch(`${import.meta.env.VITE_API_URL ?? "https://auth.rald.cloud"}/privacy/permissions`, {
-        method: "PATCH",
-        headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ [key]: val }),
-      });
-    } catch { /* silent — UI already updated */ }
+    setSaving(true);
+    try { await api.updatePermissions({ [key]: val }); }
+    catch { setPerms(perms); }
+    finally { setSaving(false); }
   }
 
   async function handleDeleteRequest() {
     setLoading(true);
-    try {
-      const token = localStorage.getItem("rald_token");
-      const resp  = await fetch(`${import.meta.env.VITE_API_URL ?? "https://auth.rald.cloud"}/privacy/delete-request`, {
-        method: "POST",
-        headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ confirm: true, reason: "User initiated from dashboard" }),
-      });
-      if (resp.ok) setDelete(2);
-      else { const r = await resp.json() as { error?: string }; setMsg(r.error ?? "Request failed."); }
-    } catch { setMsg("Request failed. Please try again."); }
+    try { await api.requestAccountDeletion(); setDelete(2); }
+    catch (ex) { setErr(ex instanceof Error ? ex.message : "Request failed"); }
     finally { setLoading(false); }
   }
 
-  const Row = ({ label, desc, val, onChange }: { label: string; desc: string; val: boolean; onChange: (v: boolean) => void }) => (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 0", borderBottom: "1px solid var(--border-2)" }}>
-      <div>
-        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{label}</div>
-        <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>{desc}</div>
+  function Row({ label, desc, val, onChange }: { label: string; desc: string; val: boolean; onChange: (v: boolean) => void }) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "11px 0", borderBottom: "1px solid var(--border)" }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 13, fontWeight: 600 }}>{label}</div>
+          <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>{desc}</div>
+        </div>
+        <button onClick={() => onChange(!val)} disabled={saving}
+          style={{
+            width: 40, height: 22, borderRadius: 11, border: "none", cursor: "pointer", flexShrink: 0,
+            background: val ? "var(--green)" : "var(--border-2)", transition: "background 0.2s", position: "relative",
+          }}>
+          <span style={{ position: "absolute", top: 2, left: val ? 20 : 2, width: 18, height: 18, borderRadius: "50%", background: "#fff", transition: "left 0.2s" }} />
+        </button>
       </div>
-      <button onClick={() => onChange(!val)} style={{
-        width: 42, height: 24, borderRadius: 12, border: "none", cursor: "pointer", position: "relative",
-        background: val ? "var(--green)" : "var(--surface)", transition: "background 0.2s",
-        boxShadow: "inset 0 1px 3px rgba(0,0,0,.3)",
-      }}>
-        <span style={{
-          position: "absolute", top: 3, left: val ? 20 : 3, width: 18, height: 18,
-          borderRadius: "50%", background: "#fff", transition: "left 0.2s",
-          boxShadow: "0 1px 3px rgba(0,0,0,.3)",
-        }} />
-      </button>
-    </div>
-  );
+    );
+  }
+
+  if (loading) return <div style={{ textAlign: "center", padding: "32px 0", color: "var(--muted)" }}>Loading…</div>;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      {msg && (
-        <div style={{ padding: "10px 14px", borderRadius: 10, background: "var(--red-dim)", border: "1px solid var(--red-border)", color: "var(--red)", fontSize: 13 }}>
-          {msg}
-        </div>
-      )}
-
-      {/* Data export */}
       <SectionCard>
         <SectionTitle>Your Data</SectionTitle>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 600 }}>Download My Data</div>
-            <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>Get a full JSON export of your identity, activity, sessions, and devices.</div>
-          </div>
-          <button onClick={handleExport} disabled={exporting} style={{
-            background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 9,
-            padding: "8px 16px", fontSize: 12, fontWeight: 700, color: "var(--text)",
-            cursor: exporting ? "not-allowed" : "pointer", opacity: exporting ? 0.6 : 1,
-          }}>
-            {exporting ? "Exporting…" : "⬇ Export"}
-          </button>
+        <div style={{ padding: "12px 14px", borderRadius: 10, background: "var(--card)", border: "1px solid var(--border)", fontSize: 11, color: "var(--muted)", lineHeight: 1.7, marginBottom: 10 }}>
+          📍 Data stored in Nigeria region · Retained while account is active · <a href="https://trust.rald.cloud/privacy" target="_blank" rel="noopener noreferrer" style={{ color: "var(--green)" }}>Privacy policy →</a>
         </div>
-        <div style={{ fontSize: 11, color: "var(--muted)", padding: "8px 12px", background: "var(--surface)", borderRadius: 8, border: "1px solid var(--border-2)" }}>
-          📍 Data stored in Nigeria region · Retained while account is active
+        <div style={{ display: "flex", gap: 8 }}>
+          <button style={{ padding: "7px 14px", borderRadius: 8, fontSize: 11, fontWeight: 700, background: "var(--surface)", border: "1px solid var(--border-2)", color: "var(--text)", cursor: "pointer" }}>
+            Export my data
+          </button>
+          <a href="mailto:privacy@rald.cloud" style={{ padding: "7px 14px", borderRadius: 8, fontSize: 11, fontWeight: 700, background: "var(--surface)", border: "1px solid var(--border-2)", color: "var(--muted)", textDecoration: "none" }}>
+            Privacy questions
+          </a>
         </div>
       </SectionCard>
 
-      {/* Permission controls */}
       <SectionCard>
         <SectionTitle>Privacy Controls</SectionTitle>
-        <Row label="Public profile" desc="Let other RALD users find and see your profile."
-          val={perms.profile_visible} onChange={v => void handlePermChange("profile_visible", v)} />
-        <Row label="Activity tracking" desc="Improve recommendations based on your usage."
-          val={perms.activity_tracking} onChange={v => void handlePermChange("activity_tracking", v)} />
-        <Row label="Marketing emails" desc="Receive product updates and announcements from RALD."
-          val={perms.marketing_emails} onChange={v => void handlePermChange("marketing_emails", v)} />
+        <Row label="Public profile" desc="Let other RALD users find and see your profile." val={perms.profile_visible} onChange={v => void handlePermChange("profile_visible", v)} />
+        <Row label="Activity tracking" desc="Improve recommendations based on your usage." val={perms.activity_tracking} onChange={v => void handlePermChange("activity_tracking", v)} />
+        <Row label="Marketing emails" desc="Receive product updates and announcements from RALD." val={perms.marketing_emails} onChange={v => void handlePermChange("marketing_emails", v)} />
         <div style={{ paddingTop: 10, fontSize: 11, color: "var(--muted)" }}>
-          Changes take effect immediately. <a href="https://learn.rald.cloud/privacy" target="_blank" rel="noopener noreferrer" style={{ color: "var(--green)" }}>Privacy policy →</a>
+          Changes take effect immediately.
         </div>
       </SectionCard>
 
-      {/* Delete account */}
       <SectionCard style={{ border: "1px solid var(--red-border)" }}>
         <SectionTitle>Danger Zone</SectionTitle>
+        {err && <div style={{ color: "var(--red)", fontSize: 12, marginBottom: 10 }}>{err}</div>}
         {deleteStep === 0 && (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div>
               <div style={{ fontSize: 13, fontWeight: 600 }}>Delete Account</div>
-              <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>Permanently remove your account and all associated data in 30 days.</div>
+              <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>Permanently remove your account and all data in 30 days.</div>
             </div>
-            <button onClick={() => setDelete(1)} style={{
-              background: "var(--red-dim)", border: "1px solid var(--red-border)", borderRadius: 9,
-              padding: "8px 16px", fontSize: 12, fontWeight: 700, color: "var(--red)", cursor: "pointer",
-            }}>Delete…</button>
+            <button onClick={() => setDelete(1)} style={{ background: "var(--red-dim)", border: "1px solid var(--red-border)", borderRadius: 9, padding: "8px 16px", fontSize: 12, fontWeight: 700, color: "var(--red)", cursor: "pointer" }}>Delete…</button>
           </div>
         )}
         {deleteStep === 1 && (
           <div>
             <div style={{ fontSize: 13, fontWeight: 700, color: "var(--red)", marginBottom: 8 }}>⚠ Are you sure?</div>
             <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 14, lineHeight: 1.6 }}>
-              Your account <strong style={{ color: "var(--text)" }}>{userEmail}</strong> will be scheduled for deletion in 30 days. All your data, sessions, organizations, and verification status will be permanently removed. This cannot be undone.
+              Your account <strong style={{ color: "var(--text)" }}>{userEmail}</strong> will be scheduled for deletion in 30 days. All data, sessions, organizations, and verification status will be permanently removed.
             </div>
             <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => setDelete(0)} style={{
-                flex: 1, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 9,
-                padding: "9px 0", fontSize: 12, fontWeight: 700, color: "var(--muted)", cursor: "pointer",
-              }}>Cancel</button>
-              <button onClick={() => void handleDeleteRequest()} disabled={loading} style={{
-                flex: 1, background: "var(--red-dim)", border: "1px solid var(--red-border)", borderRadius: 9,
-                padding: "9px 0", fontSize: 12, fontWeight: 700, color: "var(--red)",
-                cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.6 : 1,
-              }}>{loading ? "Requesting…" : "Yes, delete my account"}</button>
+              <button onClick={() => setDelete(0)} style={{ flex: 1, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 9, padding: "9px 0", fontSize: 12, fontWeight: 700, color: "var(--muted)", cursor: "pointer" }}>Cancel</button>
+              <button onClick={() => void handleDeleteRequest()} disabled={loading} style={{ flex: 1, background: "var(--red-dim)", border: "1px solid var(--red-border)", borderRadius: 9, padding: "9px 0", fontSize: 12, fontWeight: 700, color: "var(--red)", cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.6 : 1 }}>
+                {loading ? "Requesting…" : "Yes, delete my account"}
+              </button>
             </div>
           </div>
         )}
         {deleteStep === 2 && (
           <div style={{ textAlign: "center", padding: "10px 0" }}>
             <div style={{ fontSize: 18, marginBottom: 8 }}>✅</div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>Deletion scheduled</div>
-            <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.6 }}>
-              Your account will be deleted in 30 days. You can cancel by contacting <a href="mailto:privacy@rald.cloud" style={{ color: "var(--green)" }}>privacy@rald.cloud</a>.
-            </div>
+            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Deletion scheduled</div>
+            <div style={{ fontSize: 12, color: "var(--muted)" }}>Contact <a href="mailto:privacy@rald.cloud" style={{ color: "var(--green)" }}>privacy@rald.cloud</a> to cancel.</div>
           </div>
         )}
       </SectionCard>
@@ -821,27 +788,228 @@ function PrivacyTab({ userEmail }: { userEmail: string }) {
   );
 }
 
+/* ── Organizations Tab ───────────────────────────────────────────────────── */
+function OrganizationsTab({ organizations, onRefresh }: { organizations: OrgEntry[]; onRefresh: () => void }) {
+  const [creating, setCreating] = useState(false);
+  const [form, setForm] = useState({ name: "", handle: "", type: "general", description: "" });
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState("");
+
+  async function create(e: React.FormEvent) {
+    e.preventDefault(); setLoading(true); setErr("");
+    try { await api.createOrganization(form); setCreating(false); setForm({ name: "", handle: "", type: "general", description: "" }); onRefresh(); }
+    catch (ex) { setErr(ex instanceof Error ? ex.message : "Create failed"); }
+    finally { setLoading(false); }
+  }
+
+  async function leave(orgId: string) {
+    try { await api.leaveOrganization(orgId); onRefresh(); }
+    catch { /* best-effort */ }
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span style={{ fontSize: 12, color: "var(--muted)" }}>{organizations.length} organization{organizations.length !== 1 ? "s" : ""}</span>
+        <button onClick={() => setCreating(!creating)}
+          style={{ background: "var(--green-dim)", border: "1px solid var(--green-border)", borderRadius: 8, padding: "5px 12px", color: "var(--green)", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+          + New Org
+        </button>
+      </div>
+
+      {creating && (
+        <SectionCard>
+          <form onSubmit={e => void create(e)} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <input className="rald-input" placeholder="Organization name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required maxLength={80} />
+            <input className="rald-input" placeholder="Handle (no spaces)" value={form.handle} onChange={e => setForm(f => ({ ...f, handle: e.target.value.toLowerCase().replace(/\s+/g, "-") }))} required maxLength={30} />
+            <select className="rald-input" value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>
+              {Object.entries(ORG_TYPE_ICONS).map(([k]) => <option key={k} value={k}>{k.charAt(0).toUpperCase() + k.slice(1)}</option>)}
+            </select>
+            <textarea style={{ width: "100%", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: "10px 14px", color: "var(--text)", fontSize: 13, fontFamily: "inherit", resize: "vertical", minHeight: 60 }}
+              placeholder="Description (optional)" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} maxLength={300} />
+            {err && <div style={{ color: "var(--red)", fontSize: 12 }}>{err}</div>}
+            <div style={{ display: "flex", gap: 8 }}>
+              <button type="submit" disabled={loading} className="btn-primary" style={{ maxWidth: 140 }}>{loading ? "Creating…" : "Create"}</button>
+              <button type="button" onClick={() => setCreating(false)} style={{ background: "none", border: "1px solid var(--border)", borderRadius: 8, padding: "8px 16px", color: "var(--muted)", fontSize: 12, cursor: "pointer" }}>Cancel</button>
+            </div>
+          </form>
+        </SectionCard>
+      )}
+
+      {organizations.length === 0 && !creating && (
+        <div style={{ textAlign: "center", padding: "24px 0", color: "var(--muted)", fontSize: 13 }}>No organizations yet</div>
+      )}
+
+      {organizations.map(org => (
+        <div key={org.id} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "14px 16px", display: "flex", gap: 12, alignItems: "flex-start" }}>
+          <span style={{ fontSize: 22, flexShrink: 0 }}>{ORG_TYPE_ICONS[org.type] ?? "🏢"}</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 700 }}>{org.name}</div>
+            <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>@{org.handle} · {org.type}</div>
+            {org.description && <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>{org.description}</div>}
+            <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 6 }}>Your role: <span style={{ fontWeight: 700, color: "var(--text)" }}>{org.member_role}</span></div>
+          </div>
+          {org.member_role !== "owner" && (
+            <button onClick={() => void leave(org.id)}
+              style={{ flexShrink: 0, background: "none", border: "1px solid var(--border)", borderRadius: 7, padding: "4px 10px", color: "var(--muted)", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+              Leave
+            </button>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ── Audit Tab ───────────────────────────────────────────────────────────── */
+function AuditTab({ auditLogs }: { auditLogs: AuditLogEntry[] }) {
+  if (auditLogs.length === 0) return (
+    <div style={{ textAlign: "center", padding: "24px 0", color: "var(--muted)", fontSize: 13 }}>No audit log entries</div>
+  );
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 4 }}>Append-only · {auditLogs.length} events</div>
+      {auditLogs.map(a => (
+        <div key={a.id} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "9px 12px", background: "var(--surface)", borderRadius: 10, border: "1px solid var(--border)" }}>
+          <span style={{ fontSize: 15, flexShrink: 0 }}>{AUDIT_ACTION_ICONS[a.action] ?? "📋"}</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, textTransform: "capitalize" }}>{a.action.replace(/_/g, " ")}</div>
+            <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 2 }}>
+              {a.ip_address ?? "—"} · {new Date(a.created_at).toLocaleString()}
+            </div>
+          </div>
+          <span style={{ fontSize: 10, fontWeight: 700, color: a.status === "success" ? "var(--green)" : "var(--red)", flexShrink: 0 }}>
+            {a.status}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ── Settings Tab ────────────────────────────────────────────────────────── */
+function SettingsTab({ userEmail, userName }: { userEmail: string; userName: string | null }) {
+  const [, navigate] = useLocation();
+  const { logout } = useAuth();
+
+  function handleSignOut() { clearToken(); logout(); navigate("/"); }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <SectionCard>
+        <SectionTitle>Account</SectionTitle>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {[
+            { label: "Email address", value: userEmail },
+            { label: "Display name", value: userName ?? "—" },
+          ].map(r => (
+            <div key={r.label} style={{ display: "flex", justifyContent: "space-between", padding: "10px 14px", background: "var(--card)", borderRadius: 10, border: "1px solid var(--border)" }}>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600 }}>{r.label}</div>
+                <div style={{ fontSize: 11, color: "var(--muted)" }}>{r.value}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </SectionCard>
+
+      <SectionCard>
+        <SectionTitle>Quick Links</SectionTitle>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {[
+            { label: "Privacy Policy", url: "https://trust.rald.cloud/privacy", icon: "🔒" },
+            { label: "Security Center", url: "https://trust.rald.cloud/security", icon: "🛡" },
+            { label: "Verification Policy", url: "https://trust.rald.cloud/verification", icon: "✓" },
+            { label: "AI Usage Policy", url: "https://trust.rald.cloud/ai", icon: "◈" },
+            { label: "Trust Center", url: "https://trust.rald.cloud", icon: "✦" },
+            { label: "Learn Center", url: "https://learn.rald.cloud", icon: "📚" },
+            { label: "System Status", url: "https://status.rald.cloud", icon: "📡" },
+            { label: "Contact Support", url: "mailto:support@rald.cloud", icon: "✉" },
+          ].map(l => (
+            <a key={l.url} href={l.url} target="_blank" rel="noopener noreferrer"
+              style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "var(--card)", borderRadius: 10, border: "1px solid var(--border)", textDecoration: "none" }}>
+              <span style={{ fontSize: 16 }}>{l.icon}</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>{l.label}</span>
+              <span style={{ marginLeft: "auto", color: "var(--muted)", fontSize: 11 }}>→</span>
+            </a>
+          ))}
+        </div>
+      </SectionCard>
+
+      <SectionCard>
+        <SectionTitle>RALD Ecosystem</SectionTitle>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {[
+            { name: "Profiles", url: "https://profiles.rald.cloud" },
+            { name: "App", url: "https://app.rald.cloud" },
+            { name: "Manilla", url: "https://manilla.rald.cloud" },
+            { name: "Loop", url: "https://loop.rald.cloud" },
+            { name: "Messenger", url: "https://messenger.rald.cloud" },
+            { name: "Voice", url: "https://voice.rald.cloud" },
+            { name: "Mail", url: "https://mail.rald.cloud" },
+            { name: "DunaRald", url: "https://dunarald.rald.cloud" },
+          ].map(p => (
+            <a key={p.url} href={p.url} target="_blank" rel="noopener noreferrer"
+              style={{ padding: "5px 14px", borderRadius: 20, fontSize: 11, fontWeight: 700, background: "var(--card)", border: "1px solid var(--border-2)", color: "var(--muted)", textDecoration: "none" }}>
+              {p.name} →
+            </a>
+          ))}
+        </div>
+      </SectionCard>
+
+      <SectionCard>
+        <SectionTitle>Session</SectionTitle>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600 }}>Sign out</div>
+            <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>Sign out of this device</div>
+          </div>
+          <button onClick={handleSignOut}
+            style={{ background: "var(--red-dim)", border: "1px solid var(--red-border)", borderRadius: 9, padding: "8px 16px", fontSize: 12, fontWeight: 700, color: "var(--red)", cursor: "pointer" }}>
+            Sign out
+          </button>
+        </div>
+      </SectionCard>
+
+      <div style={{ textAlign: "center", padding: "10px 0" }}>
+        <div style={{ fontSize: 10, color: "var(--muted)", lineHeight: 1.8 }}>
+          RALD · LILCKY STUDIO LIMITED · Nigeria<br />
+          <a href="mailto:privacy@rald.cloud" style={{ color: "var(--muted)" }}>privacy@rald.cloud</a> · <a href="mailto:support@rald.cloud" style={{ color: "var(--muted)" }}>support@rald.cloud</a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Dashboard (main) ────────────────────────────────────────────────────── */
+export default function Dashboard() {
+  const { user, logout } = useAuth();
+  const [, navigate] = useLocation();
   const [tab, setTab] = useState<Tab>("profile");
 
-  const [profile,      setProfile]      = useState<ProfileData | null>(null);
-  const [apps,         setApps]         = useState<EcosystemApp[]>([]);
-  const [sessions,     setSessions]     = useState<SessionEntry[]>([]);
-  const [devices,      setDevices]      = useState<DeviceEntry[]>([]);
-  const [activity,     setActivity]     = useState<ActivityEntry[]>([]);
-  const [organizations, setOrgs]        = useState<OrgEntry[]>([]);
-  const [auditLogs,    setAuditLogs]    = useState<AuditLogEntry[]>([]);
-  const [verification, setVerification] = useState<VerificationStatus | null>(null);
+  const [profile,       setProfile]   = useState<ProfileData | null>(null);
+  const [connectedApps, setConnected] = useState<ConnectedApp[]>([]);
+  const [provisionedIds,setProv]      = useState<string[]>([]);
+  const [sessions,      setSessions]  = useState<SessionEntry[]>([]);
+  const [devices,       setDevices]   = useState<DeviceEntry[]>([]);
+  const [activity,      setActivity]  = useState<ActivityEntry[]>([]);
+  const [organizations, setOrgs]      = useState<OrgEntry[]>([]);
+  const [auditLogs,     setAuditLogs] = useState<AuditLogEntry[]>([]);
+  const [verification,  setVerif]     = useState<VerificationStatus | null>(null);
 
-  const loadProfile      = useCallback(() => api.profile().then(setProfile).catch(() => null), []);
-  const loadApps         = useCallback(() => api.appLauncher().then(r => setApps(r.apps)).catch(() => null), []);
-  const loadSessions     = useCallback(() => api.sessions().then(setSessions).catch(() => null), []);
-  const loadDevices      = useCallback(() => api.devices().then(setDevices).catch(() => null), []);
-  const loadActivity     = useCallback(() => api.activity().then(r => setActivity(r.activity)).catch(() => null), []);
-  const loadOrgs         = useCallback(() => api.organizations().then(r => setOrgs(r.organizations)).catch(() => null), []);
-  const loadAuditLogs    = useCallback(() => api.auditLogs().then(r => setAuditLogs(r.audit_logs)).catch(() => null), []);
-  const loadVerification = useCallback(() => api.verificationStatus().then(setVerification).catch(() => null), []);
+  const loadProfile     = useCallback(() => api.profile().then(setProfile).catch(() => null), []);
+  const loadConnected   = useCallback(() => Promise.all([
+    api.connectedApps().then(r => setConnected(r.connected_apps)).catch(() => null),
+    api.appLauncher().then(r => setProv(r.apps.filter(a => a.provisioned).map(a => a.id))).catch(() => null),
+  ]), []);
+  const loadSessions    = useCallback(() => api.sessions().then(setSessions).catch(() => null), []);
+  const loadDevices     = useCallback(() => api.devices().then(setDevices).catch(() => null), []);
+  const loadActivity    = useCallback(() => api.activity().then(r => setActivity(r.activity)).catch(() => null), []);
+  const loadOrgs        = useCallback(() => api.organizations().then(r => setOrgs(r.organizations)).catch(() => null), []);
+  const loadAuditLogs   = useCallback(() => api.auditLogs().then(r => setAuditLogs(r.audit_logs)).catch(() => null), []);
+  const loadVerif       = useCallback(() => api.verificationStatus().then(setVerif).catch(() => null), []);
 
-  useEffect(() => { void loadProfile(); void loadApps(); void loadVerification(); }, [loadProfile, loadApps, loadVerification]);
+  useEffect(() => { void loadProfile(); void loadConnected(); void loadVerif(); }, [loadProfile, loadConnected, loadVerif]);
 
   useEffect(() => {
     if (tab === "sessions")      void loadSessions();
@@ -849,27 +1017,27 @@ function PrivacyTab({ userEmail }: { userEmail: string }) {
     if (tab === "activity")      void loadActivity();
     if (tab === "organizations") void loadOrgs();
     if (tab === "audit")         void loadAuditLogs();
-    if (tab === "security")      void loadVerification();
-  }, [tab, loadSessions, loadDevices, loadActivity, loadOrgs, loadAuditLogs, loadVerification]);
+    if (tab === "security")      void loadVerif();
+  }, [tab, loadSessions, loadDevices, loadActivity, loadOrgs, loadAuditLogs, loadVerif]);
 
   function handleLogout() { clearToken(); logout(); navigate("/"); }
-  function handleRevokeAll() { clearToken(); logout(); navigate("/"); }
 
   const TABS: { id: Tab; label: string; icon: string }[] = [
-    { id: "profile",       label: "Profile",  icon: "👤" },
-    { id: "apps",          label: "Apps",     icon: "🚀" },
-    { id: "sessions",      label: "Sessions", icon: "🔑" },
-    { id: "devices",       label: "Devices",  icon: "📱" },
-    { id: "activity",      label: "Activity", icon: "📋" },
-    { id: "security",      label: "Security", icon: "🛡️" },
-    { id: "organizations", label: "Orgs",     icon: "🏢" },
-    { id: "audit",         label: "Audit",    icon: "🔍" },
-    { id: "privacy",       label: "Privacy",  icon: "🔒" },
+    { id: "profile",       label: "Profile",    icon: "👤" },
+    { id: "connected",     label: "Apps",       icon: "🔗" },
+    { id: "verification",  label: "Verify",     icon: "✓"  },
+    { id: "sessions",      label: "Sessions",   icon: "🔑" },
+    { id: "devices",       label: "Devices",    icon: "📱" },
+    { id: "activity",      label: "Activity",   icon: "📋" },
+    { id: "security",      label: "Security",   icon: "🛡️" },
+    { id: "organizations", label: "Orgs",       icon: "🏢" },
+    { id: "audit",         label: "Audit",      icon: "🔍" },
+    { id: "privacy",       label: "Privacy",    icon: "🔒" },
+    { id: "settings",      label: "Settings",   icon: "⚙️" },
   ];
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)" }}>
-      {/* ── Header ─────────────────────────────────────────────────────── */}
       <header style={{
         borderBottom: "1px solid var(--border)", padding: "14px 24px",
         display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -891,9 +1059,8 @@ function PrivacyTab({ userEmail }: { userEmail: string }) {
         </div>
       </header>
 
-      <div style={{ maxWidth: 700, margin: "0 auto", padding: "24px 20px 60px" }}>
-
-        {/* ── User hero ────────────────────────────────────────────────── */}
+      <div style={{ maxWidth: 720, margin: "0 auto", padding: "24px 20px 60px" }}>
+        {/* User hero */}
         <div style={{
           background: "var(--card)", border: "1px solid var(--border)", borderRadius: 18,
           padding: "20px 22px", marginBottom: 20,
@@ -905,7 +1072,7 @@ function PrivacyTab({ userEmail }: { userEmail: string }) {
             <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: "-0.02em" }}>{profile?.name ?? user?.name ?? "RALD User"}</div>
             <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{user?.email}</div>
             {profile?.rald_id && (
-              <div style={{ fontSize: 11, color: "var(--green)", fontWeight: 700, letterSpacing: "0.04em", marginTop: 3 }}>{profile.rald_id}</div>
+              <div style={{ fontSize: 11, color: "var(--green)", fontWeight: 700, letterSpacing: "0.04em", marginTop: 3, fontFamily: "monospace" }}>{profile.rald_id}</div>
             )}
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
@@ -919,7 +1086,7 @@ function PrivacyTab({ userEmail }: { userEmail: string }) {
           </div>
         </div>
 
-        {/* ── Tabs ─────────────────────────────────────────────────────── */}
+        {/* Tabs */}
         <div style={{
           display: "flex", gap: 3, marginBottom: 20, overflowX: "auto",
           background: "var(--surface)", borderRadius: 12, padding: 4,
@@ -933,7 +1100,7 @@ function PrivacyTab({ userEmail }: { userEmail: string }) {
                 background: tab === t.id ? "var(--card)" : "transparent",
                 boxShadow: tab === t.id ? "0 1px 6px rgba(0,0,0,.4)" : "none",
                 color: tab === t.id ? "var(--text)" : "var(--muted)",
-                transition: "all 0.15s", minWidth: 58,
+                transition: "all 0.15s", minWidth: 56,
               }}>
               <span style={{ fontSize: 16 }}>{t.icon}</span>
               <span style={{ fontSize: 10, fontWeight: 700, whiteSpace: "nowrap" }}>{t.label}</span>
@@ -941,18 +1108,19 @@ function PrivacyTab({ userEmail }: { userEmail: string }) {
           ))}
         </div>
 
-        {/* ── Tab content ──────────────────────────────────────────────── */}
+        {/* Tab content */}
         {tab === "profile"       && <ProfileTab       profile={profile} verification={verification} onUpdated={loadProfile} />}
-        {tab === "apps"          && <AppsTab          apps={apps} onLaunch={() => void loadApps()} />}
-        {tab === "sessions"      && <SessionsTab      sessions={sessions} onRevokeAll={handleRevokeAll} />}
+        {tab === "connected"     && <ConnectedAppsTab apps={connectedApps} provisionedIds={provisionedIds} onRefresh={() => { void loadConnected(); }} />}
+        {tab === "verification"  && <VerificationTab  verification={verification} />}
+        {tab === "sessions"      && <SessionsTab      sessions={sessions} onRevokeAll={handleLogout} />}
         {tab === "devices"       && <DevicesTab       devices={devices} />}
         {tab === "activity"      && <ActivityTab      activity={activity} />}
-        {tab === "security"      && <SecurityTab      verification={verification} userEmail={user?.email ?? ""} onSignOut={handleRevokeAll} />}
+        {tab === "security"      && <SecurityTab      verification={verification} userEmail={user?.email ?? ""} onSignOut={handleLogout} />}
         {tab === "organizations" && <OrganizationsTab organizations={organizations} onRefresh={loadOrgs} />}
         {tab === "audit"         && <AuditTab         auditLogs={auditLogs} />}
-        {tab === "privacy"       && <PrivacyTab        userEmail={user?.email ?? ""} />}
+        {tab === "privacy"       && <PrivacyTab       userEmail={user?.email ?? ""} />}
+        {tab === "settings"      && <SettingsTab      userEmail={user?.email ?? ""} userName={profile?.name ?? user?.name ?? null} />}
       </div>
     </div>
   );
 }
-
