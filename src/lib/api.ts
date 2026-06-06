@@ -259,5 +259,82 @@ export const api = {
   auditLogs: (limit = 50) => req<{ audit_logs: AuditLogEntry[]; count: number }>(`/profiles/audit-logs?limit=${limit}`),
 
   // Verification Status (Phase H)
+
+  // ── Phase 3 — Privacy Center ──────────────────────────────────────────────
+  privacyOverview: () =>
+    req<{
+      data_collected: Record<string, unknown>;
+      connected_apps: string[];
+      active_sessions: number;
+      permissions: { profile_visible: boolean; activity_tracking: boolean; marketing_emails: boolean };
+    }>("/privacy/me"),
+
+  updatePermissions: (perms: { profile_visible?: boolean; activity_tracking?: boolean; marketing_emails?: boolean }) =>
+    req<{ ok: boolean; permissions: typeof perms }>("/privacy/permissions", {
+      method: "PATCH", body: JSON.stringify(perms),
+    }),
+
+  requestAccountDeletion: (reason?: string) =>
+    req<{ ok: boolean; message: string; scheduled_at: string }>("/privacy/delete-request", {
+      method: "POST", body: JSON.stringify({ confirm: true, reason }),
+    }),
+
+  cancelAccountDeletion: () =>
+    req<{ ok: boolean; message: string }>("/privacy/cancel-deletion", { method: "POST" }),
+
+  // ── Phase 5 — Role Engine ─────────────────────────────────────────────────
+  allRoles: () =>
+    req<{ roles: Array<{ role: string; label: string; description: string; capabilities: string[]; requires_verification: boolean }>; total: number }>("/roles/all"),
+
+  myRole: () =>
+    req<{
+      primary_role: string;
+      role_info: { label: string; description: string; capabilities: string[] };
+      product_roles: Array<{ product: string; role: string; granted_at: string }>;
+      additional_roles: string[];
+      verified_as: string[];
+    }>("/roles/me"),
+
+  requestRole: (requested_role: string, reason?: string) =>
+    req<{ ok: boolean; granted: boolean; role: string; message: string }>("/roles/request", {
+      method: "POST", body: JSON.stringify({ requested_role, reason }),
+    }),
+
+  roleCapabilities: (role: string) =>
+    req<{ role: string; label: string; description: string; capabilities: string[] }>(`/roles/capabilities/${role}`),
+
+  // ── Phase 6 — Verification Engine ────────────────────────────────────────
+  verifications: () =>
+    req<{
+      verifications: Array<{
+        id: string; verification_type: string; status: string; name: string;
+        description?: string; submitted_at: string; reviewed_at?: string;
+      }>;
+      count: number;
+      has_approved: boolean;
+      approved_types: string[];
+    }>("/verify/status"),
+
+  applyVerification: (data: {
+    type: "artist" | "label" | "radio" | "advertiser" | "media_house" | "community";
+    name: string;
+    description?: string;
+    website?: string;
+    social_links?: Record<string, string>;
+    documents?: string[];
+  }) =>
+    req<{ ok: boolean; application: Record<string, unknown>; message: string }>("/verify/apply", {
+      method: "POST", body: JSON.stringify(data),
+    }),
+
+  withdrawVerification: (id: string) =>
+    req<{ ok: boolean; message: string }>(`/verify/${id}`, { method: "DELETE" }),
+
+  verificationBadge: (type: string) =>
+    req<{ verified: boolean; type: string; badge: string; issued_at: string }>(`/verify/badge/${type}`, {
+      method: "POST",
+    }),
+
+  // Legacy (Phase H) — keep for backward compat
   verificationStatus: () => req<VerificationStatus>("/profiles/verification"),
 };
