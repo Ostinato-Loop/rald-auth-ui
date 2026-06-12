@@ -3,9 +3,11 @@ import { useLocation } from "wouter";
 import { detectIdentityType, saveRedirect } from "../lib/api";
 import type { SdkState } from "../components/SdkInput";
 
+const LS_KEY = "rald_last_identity";
+
 export default function IdentityPage() {
   const [, navigate]    = useLocation();
-  const [value, setValue]     = useState("");
+  const [value, setValue]     = useState(() => localStorage.getItem(LS_KEY) ?? "");
   const [sdkState, setSdkState] = useState<SdkState>("idle");
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -23,7 +25,9 @@ export default function IdentityPage() {
     e.preventDefault();
     if (!value.trim()) return;
     setSdkState("processing");
-    sessionStorage.setItem("rald_identity", value.trim());
+    const trimmed = value.trim();
+    localStorage.setItem(LS_KEY, trimmed);
+    sessionStorage.setItem("rald_identity", trimmed);
     sessionStorage.setItem("rald_identity_type", type);
     navigate("/verify");
   };
@@ -83,7 +87,9 @@ export default function IdentityPage() {
             className="btn-ghost"
             onClick={() => {
               if (value.trim()) {
-                sessionStorage.setItem("rald_identity", value.trim());
+                const trimmed = value.trim();
+                localStorage.setItem(LS_KEY, trimmed);
+                sessionStorage.setItem("rald_identity", trimmed);
                 sessionStorage.setItem("rald_identity_type", type);
               }
               navigate("/password");
